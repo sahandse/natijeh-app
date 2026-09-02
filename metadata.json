@@ -1,0 +1,6 @@
+{
+  "name": "Natijeh",
+  "description": "The ultimate sports live score and AI-powered match analyst app, with a premium RTL dark/light theme and automated client-side data aggregator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
