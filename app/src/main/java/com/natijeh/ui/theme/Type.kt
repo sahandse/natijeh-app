@@ -48,6 +48,14 @@ val Typography = Typography(
         letterSpacing = 0.sp,
         fontFeatureSettings = "tnum"
     ),
+    headlineSmall = TextStyle(
+        fontFamily = Vazirmatn,
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
+    ),
     titleLarge = TextStyle(
         fontFamily = Vazirmatn,
         fontWeight = FontWeight.Bold,

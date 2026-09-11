@@ -124,10 +124,6 @@ fun SettingsScreen(
             SectionLabel("درباره")
             SettingsCard {
                 AboutRow("نسخه", BuildConfig.VERSION_NAME)
-                Hairline()
-                AboutRow("منبع داده", "ورزش ۳ — بدون کلید")
-                Hairline()
-                AboutRow("شناسه", BuildConfig.APPLICATION_ID)
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
