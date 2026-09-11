@@ -33,10 +33,8 @@
 
 هر push، هر Pull Request و اجرای دستی workflow، APK را می‌سازد.
 
-هر push به `master`، هر Pull Request و اجرای دستی workflow، APK را می‌سازد.
-
 - Artifact در صفحه Actions قابل دانلود است
-- روی `master` یا اجرای دستی (`workflow_dispatch`)، GitHub Release با تگ `v1.1.0` و فایل `natijeh-1.1.0.apk` ساخته/به‌روز می‌شود
+- روی push (نه PR) GitHub Release با تگ `v1.1.0` و فایل `natijeh-1.1.0.apk` ساخته/به‌روز می‌شود
 
 برای ساخت دستی از تب Actions → **Android CI** → **Run workflow**.
 
