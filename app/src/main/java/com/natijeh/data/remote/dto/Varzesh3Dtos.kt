@@ -87,6 +87,7 @@ data class ApiMatchDetail(
 
 data class ApiMatchLeague(
     val title: String? = null,
+    val name: String? = null,
     val logo: String? = null,
     val link: String? = null,
     val season: String? = null

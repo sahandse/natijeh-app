@@ -11,8 +11,9 @@ import com.natijeh.data.model.MatchLineups
 import com.natijeh.data.model.PlayerLineup
 import com.natijeh.data.model.ScorerRow
 import com.natijeh.data.model.SquadPlayer
-import com.natijeh.data.model.TeamResultMatch
+import com.natijeh.data.model.StandingRow
 import com.natijeh.data.model.StatItem
+import com.natijeh.data.model.TeamResultMatch
 import com.natijeh.data.remote.dto.ApiEvent
 import com.natijeh.data.remote.dto.ApiFixtureRound
 import com.natijeh.data.remote.dto.ApiLineupSide
@@ -381,7 +382,7 @@ object SportsMapper {
                 awayTeamId = sideId(item.guest),
                 homeScore = item.goals?.host,
                 awayScore = item.goals?.guest,
-                leagueName = item.league?.name ?: item.league?.title.orEmpty(),
+                leagueName = item.league?.title ?: item.league?.name.orEmpty(),
                 status = mapStatus(item.isLive == true, item.status)
             )
         }.filter { it.id.isNotBlank() }
