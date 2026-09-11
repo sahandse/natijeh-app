@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -19,7 +19,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.data.local.AppDatabase
 import com.example.data.repository.SportsRepository
-import com.example.ui.screens.*
+import com.example.ui.screens.LeagueDetailScreen
+import com.example.ui.screens.MainDashboard
+import com.example.ui.screens.MatchDetailScreen
+import com.example.ui.screens.TeamDetailScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.SportsViewModel
 
@@ -28,46 +31,27 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize Core Room Database & Repository
         val database = AppDatabase.getDatabase(this)
-        val repository = SportsRepository(database.sportsDao(), this)
+        val repository = SportsRepository(database.sportsDao())
 
         setContent {
-            MyApplicationTheme {
-                // Force Right-to-Left (RTL) layout direction globally for Persian language support
+            MyApplicationTheme(darkTheme = true) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
                         val navController = rememberNavController()
-
-                        // Create ViewModels with simple Constructor Factories
                         val sportsViewModel: SportsViewModel = viewModel(
                             factory = SportsViewModel.Factory(repository)
                         )
 
                         NavHost(
                             navController = navController,
-                            startDestination = "onboarding"
+                            startDestination = "dashboard"
                         ) {
-                            // Onboarding / Welcome Splash screen
-                            composable("onboarding") {
-                                OnboardingScreen(onFinished = { username ->
-                                    navController.navigate("dashboard/$username") {
-                                        popUpTo("onboarding") { inclusive = true }
-                                    }
-                                })
-                            }
-
-                            // Main Dashboard containing all sub-tabs (Today, Live, Leagues, News, Favorites)
-                            composable(
-                                route = "dashboard/{username}",
-                                arguments = listOf(navArgument("username") { type = NavType.StringType })
-                            ) { backStackEntry ->
-                                val username = backStackEntry.arguments?.getString("username") ?: "کاربر"
+                            composable("dashboard") {
                                 MainDashboard(
-                                    username = username,
                                     sportsViewModel = sportsViewModel,
                                     onNavigateToMatch = { matchId ->
                                         navController.navigate("match_detail/$matchId")
@@ -80,39 +64,33 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
-
-                            // Match Details Screen (Timeline, Statistics, Lineups)
                             composable(
                                 route = "match_detail/{matchId}",
                                 arguments = listOf(navArgument("matchId") { type = NavType.StringType })
                             ) { backStackEntry ->
-                                val matchId = backStackEntry.arguments?.getString("matchId") ?: ""
+                                val matchId = backStackEntry.arguments?.getString("matchId").orEmpty()
                                 MatchDetailScreen(
                                     matchId = matchId,
                                     sportsViewModel = sportsViewModel,
                                     onBack = { navController.popBackStack() }
                                 )
                             }
-
-                            // Team Details Screen (Coach, Stadium, Rosters, Squad, Honours)
                             composable(
                                 route = "team_detail/{teamId}",
                                 arguments = listOf(navArgument("teamId") { type = NavType.StringType })
                             ) { backStackEntry ->
-                                val teamId = backStackEntry.arguments?.getString("teamId") ?: ""
+                                val teamId = backStackEntry.arguments?.getString("teamId").orEmpty()
                                 TeamDetailScreen(
                                     teamId = teamId,
                                     viewModel = sportsViewModel,
                                     onBack = { navController.popBackStack() }
                                 )
                             }
-
-                            // League Details Screen (Standings table, Rank, GF/GA, Points)
                             composable(
                                 route = "league_detail/{leagueId}",
                                 arguments = listOf(navArgument("leagueId") { type = NavType.StringType })
                             ) { backStackEntry ->
-                                val leagueId = backStackEntry.arguments?.getString("leagueId") ?: ""
+                                val leagueId = backStackEntry.arguments?.getString("leagueId").orEmpty()
                                 LeagueDetailScreen(
                                     leagueId = leagueId,
                                     viewModel = sportsViewModel,

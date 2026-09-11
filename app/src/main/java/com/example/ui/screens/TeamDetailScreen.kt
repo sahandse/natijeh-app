@@ -1,28 +1,45 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.data.model.HeadToHeadMatch
 import com.example.data.model.SquadPlayer
-import com.example.data.model.TeamEntity
 import com.example.ui.viewmodel.SportsViewModel
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -32,8 +49,8 @@ private val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
 private val squadAdapter = moshi.adapter<List<SquadPlayer>>(
     Types.newParameterizedType(List::class.java, SquadPlayer::class.java)
 )
-private val honoursAdapter = moshi.adapter<List<String>>(
-    Types.newParameterizedType(List::class.java, String::class.java)
+private val recentAdapter = moshi.adapter<List<HeadToHeadMatch>>(
+    Types.newParameterizedType(List::class.java, HeadToHeadMatch::class.java)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,13 +62,17 @@ fun TeamDetailScreen(
 ) {
     val team by viewModel.getTeamFlow(teamId).collectAsStateWithLifecycle(initialValue = null)
 
+    LaunchedEffect(teamId) {
+        viewModel.loadTeamDetails(teamId)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(team?.name ?: "اطلاعات تیم", fontWeight = FontWeight.Bold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "بازگشت", tint = Color.White)
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت", tint = Color.White)
                     }
                 },
                 actions = {
@@ -71,113 +92,81 @@ fun TeamDetailScreen(
         containerColor = Color(0xFF0B0E14)
     ) { innerPadding ->
         team?.let { t ->
-            val squad = squadAdapter.fromJson(t.squadJson) ?: emptyList()
-            val honours = honoursAdapter.fromJson(t.honoursJson) ?: emptyList()
-
+            val squad = squadAdapter.fromJson(t.squadJson).orEmpty()
+            val recent = recentAdapter.fromJson(t.recentJson).orEmpty()
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Info Card
                 item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text("مشخصات باشگاه", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), shape = RoundedCornerShape(16.dp)) {
+                        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            AsyncImage(model = t.logo, contentDescription = t.name, modifier = Modifier.size(72.dp))
+                            Text(t.name, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            if (t.rankLabel.isNotBlank()) {
+                                Text(t.rankLabel, color = Color(0xFF18C964), style = MaterialTheme.typography.bodyMedium)
                             }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("مربی:", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
-                                Text(t.coach, color = Color.White, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            if (t.coach.isNotBlank()) {
+                                Text("مربی: ${t.coach}", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
                             }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("ورزشگاه:", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
-                                Text(t.stadium, color = Color.White, style = MaterialTheme.typography.bodyMedium)
-                            }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("سال تاسیس:", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
-                                Text(t.founded, color = Color.White, style = MaterialTheme.typography.bodyMedium)
-                            }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("ارزش بازار اسکواد:", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
-                                Text(t.marketValue, color = Color(0xFF18C964), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("رتبه قدرت ClubElo:", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
-                                val elo = when {
-                                    t.name.contains("رئال مادرید") || t.name.contains("Real") -> 2018
-                                    t.name.contains("منچستر") || t.name.contains("Manchester") -> 2035
-                                    t.name.contains("آرسنال") || t.name.contains("Arsenal") -> 1964
-                                    t.name.contains("بارسلونا") || t.name.contains("Barcelona") -> 1948
-                                    t.name.contains("بایرن") || t.name.contains("Bayern") -> 1957
-                                    t.name.contains("پرسپولیس") -> 1612
-                                    t.name.contains("استقلال") -> 1575
-                                    t.name.contains("سپاهان") -> 1560
-                                    t.name.contains("تراکتور") -> 1530
-                                    else -> 1450 + (t.name.hashCode() % 100).coerceAtLeast(0)
-                                }
-                                Text("$elo", color = Color(0xFF38BDF8), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            if (t.stadium.isNotBlank()) {
+                                Text("ورزشگاه: ${t.stadium}", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
                 }
-
-                // Honours Section
-                if (honours.isNotEmpty()) {
-                    item { Text("🏆 افتخارات و جام‌ها", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                    items(honours) { trophy ->
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF21262D)),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = trophy,
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(16.dp),
-                                fontWeight = FontWeight.Bold
-                            )
+                if (recent.isNotEmpty()) {
+                    item { Text("بازی‌های اخیر", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                    items(recent) { match ->
+                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF21262D)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(match.homeTeam, color = Color.White, modifier = Modifier.weight(1f), maxLines = 1)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(match.score, color = Color(0xFF18C964), fontWeight = FontWeight.Bold)
+                                    Text(match.date, color = Color(0xFF64748B), style = MaterialTheme.typography.labelSmall)
+                                }
+                                Text(match.awayTeam, color = Color.White, modifier = Modifier.weight(1f), maxLines = 1)
+                            }
                         }
                     }
                 }
-
-                // Squad list
-                item {
-                    Column {
-                        Text("👥 لیست بازیکنان تیم", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-                items(squad) { player ->
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text(player.name, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFF18C964).copy(alpha = 0.2f)) {
-                                    Text(player.position, color = Color(0xFF18C964), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+                if (squad.isNotEmpty()) {
+                    item { Text("لیست بازیکنان", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                    items(squad) { player ->
+                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                if (player.portrait.isNotBlank()) {
+                                    AsyncImage(model = player.portrait, contentDescription = player.name, modifier = Modifier.size(44.dp))
+                                } else {
+                                    Surface(shape = CircleShape, color = Color(0xFF21262D), modifier = Modifier.size(44.dp)) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(player.shirtNumber.toString(), color = Color(0xFF18C964), fontWeight = FontWeight.Bold)
+                                        }
+                                    }
                                 }
-                            }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("سن: ${player.age} سال", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
-                                Text("پا: ${player.preferredFoot}", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
-                                Text("قد/وزن: ${player.height}/${player.weight}", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
-                            }
-                            HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("بازی‌ها: ${player.appearances}", color = Color.White, style = MaterialTheme.typography.bodySmall)
-                                Text("گل‌ها: ${player.goals}", color = Color(0xFF18C964), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                                Text("پاس گل: ${player.assists}", color = Color(0xFF38BDF8), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                                Text(player.marketValue, color = Color.White, style = MaterialTheme.typography.bodySmall)
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text(player.name, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFF18C964).copy(alpha = 0.2f)) {
+                                            Text(player.position, color = Color(0xFF18C964), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                    Text(
+                                        text = buildString {
+                                            if (player.shirtNumber > 0) append("شماره ${player.shirtNumber}")
+                                            if (player.age > 0) {
+                                                if (isNotEmpty()) append("  |  ")
+                                                append("${player.age} سال")
+                                            }
+                                        },
+                                        color = Color(0xFF94A3B8),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
                         }
                     }

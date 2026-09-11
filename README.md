@@ -1,21 +1,26 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# نتیجه — لایواسکور فارسی
 
-# Run and deploy your AI Studio app
+اپ اندروید Jetpack Compose برای نتایج زنده فوتبال به زبان فارسی و راست‌چین.
 
-This contains everything you need to run your app locally.
+## قابلیت‌ها
 
-View your app in AI Studio: https://ai.studio/apps/a78a9c4b-6a05-4811-a1cc-ddcb03bd8da2
+- ورود مستقیم به داشبورد (بدون صفحه نام کاربری)
+- بازی‌های امروز، دیروز و روزهای اطراف
+- تب زنده با به‌روزرسانی خودکار
+- جزئیات مسابقه: رویدادها، آمار، ترکیب، رویارویی‌ها
+- جدول لیگ‌ها و صفحه تیم با اسکواد واقعی
+- اخبار فوتبال داخلی و خارجی
+- علاقه‌مندی و جستجوی تیم / لیگ / مربی
 
-## Run Locally
+## منبع داده (بدون کلید)
 
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+داده‌های زنده از API عمومی وب ورزش ۳ خوانده می‌شود؛ اخبار از RSS ورزش ۳. هیچ کلید Gemini یا سرویس پولی لازم نیست.
 
+## اجرا
 
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+پیش‌نیاز: [Android Studio](https://developer.android.com/studio)
+
+1. پروژه را در Android Studio باز کنید
+2. روی امولاتور یا گوشی اجرا کنید
+
+برای امضای انتشار، خط `signingConfig = signingConfigs.getByName("debugConfig")` را از `app/build.gradle.kts` برندارید مگر کلید استور خودتان را تنظیم کرده باشید.

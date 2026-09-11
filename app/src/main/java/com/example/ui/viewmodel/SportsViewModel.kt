@@ -3,59 +3,105 @@ package com.example.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.data.model.*
+import com.example.data.model.LeagueEntity
+import com.example.data.model.MatchEntity
+import com.example.data.model.NewsEntity
+import com.example.data.model.TeamEntity
 import com.example.data.repository.SportsRepository
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
 
-    private val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    val datesList: List<Pair<String, Int>> = listOf(
+        "۲ روز قبل" to -2,
+        "دیروز" to -1,
+        "امروز" to 0,
+        "فردا" to 1,
+        "۲ روز بعد" to 2
+    )
 
-    private val _selectedDate = MutableStateFlow(sdf.format(Date()))
-    val selectedDate: StateFlow<String> = _selectedDate.asStateFlow()
+    private val _selectedOffset = MutableStateFlow(0)
+    val selectedOffset: StateFlow<Int> = _selectedOffset.asStateFlow()
 
-    // Date Tabs for Today, Yesterday, Tomorrow
-    val datesList: List<Pair<String, String>> = List(5) { i ->
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, i - 2) // yesterday-yesterday, yesterday, today, tomorrow, tomorrow-tomorrow
-        val dateVal = sdf.format(cal.time)
-        val label = when (i) {
-            0 -> "۲ روز قبل"
-            1 -> "دیروز"
-            2 -> "امروز"
-            3 -> "فردا"
-            4 -> "۲ روز بعد"
-            else -> ""
-        }
-        Pair(label, dateVal)
-    }
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    // All Matches (for search)
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     val allMatches: StateFlow<List<MatchEntity>> = repository.allMatches
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // Matches for Selected Date
-    val matchesForSelectedDate: StateFlow<List<MatchEntity>> = _selectedDate
-        .flatMapLatest { date -> repository.getMatchesByDate(date) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val matchesForSelectedDate: StateFlow<List<MatchEntity>> = _selectedOffset
+        .flatMapLatest { offset -> repository.getMatchesByOffset(offset) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // Live Matches
     val liveMatches: StateFlow<List<MatchEntity>> = repository.liveMatches
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // Leagues
     val allLeagues: StateFlow<List<LeagueEntity>> = repository.allLeagues
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // News
+    val allTeams: StateFlow<List<TeamEntity>> = repository.allTeams
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val newsFeed: StateFlow<List<NewsEntity>> = repository.newsFeed
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _isRefreshingNews = MutableStateFlow(false)
     val isRefreshingNews: StateFlow<Boolean> = _isRefreshingNews.asStateFlow()
+
+    val favoriteMatches: StateFlow<List<MatchEntity>> = repository.favoriteMatches
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val favoriteTeams: StateFlow<List<TeamEntity>> = repository.favoriteTeams
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val favoriteLeagues: StateFlow<List<LeagueEntity>> = repository.favoriteLeagues
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        repository.startLiveUpdates()
+        refresh(forceAll = true)
+    }
+
+    fun selectDate(offset: Int) {
+        _selectedOffset.value = offset
+        viewModelScope.launch {
+            try {
+                repository.refreshLiveScore(offset)
+            } catch (e: Exception) {
+                _errorMessage.value = "به‌روزرسانی این روز ناموفق بود"
+            }
+        }
+    }
+
+    fun refresh(forceAll: Boolean = false) {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                if (forceAll) {
+                    repository.refreshAll(includeNews = true)
+                } else {
+                    repository.refreshLiveScore(_selectedOffset.value)
+                    if (_selectedOffset.value != 0) {
+                        repository.refreshLiveScore(0)
+                    }
+                }
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "اتصال به داده زنده برقرار نشد. بعداً دوباره تلاش کنید."
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
 
     fun refreshNews() {
         viewModelScope.launch {
@@ -70,43 +116,56 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
         }
     }
 
-    // Favorites
-    val favoriteMatches: StateFlow<List<MatchEntity>> = repository.favoriteMatches
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val favoriteTeams: StateFlow<List<TeamEntity>> = repository.favoriteTeams
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val favoriteLeagues: StateFlow<List<LeagueEntity>> = repository.favoriteLeagues
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    fun selectDate(date: String) {
-        _selectedDate.value = date
-    }
-
-    // Toggles
     fun toggleMatchFavorite(id: String, isFavorite: Boolean) {
-        viewModelScope.launch {
-            repository.setMatchFavorite(id, !isFavorite)
-        }
+        viewModelScope.launch { repository.setMatchFavorite(id, !isFavorite) }
     }
 
     fun toggleTeamFavorite(id: String, isFavorite: Boolean) {
-        viewModelScope.launch {
-            repository.setTeamFavorite(id, !isFavorite)
-        }
+        viewModelScope.launch { repository.setTeamFavorite(id, !isFavorite) }
     }
 
     fun toggleLeagueFavorite(id: String, isFavorite: Boolean) {
+        viewModelScope.launch { repository.setLeagueFavorite(id, !isFavorite) }
+    }
+
+    fun getMatchFlow(id: String) = repository.getMatchByIdFlow(id)
+    fun getTeamFlow(id: String) = repository.getTeamByIdFlow(id)
+    fun getLeagueFlow(id: String) = repository.getLeagueByIdFlow(id)
+
+    fun loadMatchDetails(id: String) {
         viewModelScope.launch {
-            repository.setLeagueFavorite(id, !isFavorite)
+            try {
+                repository.loadMatchDetails(id)
+            } catch (e: Exception) {
+                android.util.Log.e("SportsViewModel", "Match details failed", e)
+            }
         }
     }
 
-    // Details Getters
-    fun getMatchFlow(id: String): Flow<MatchEntity?> = repository.getMatchByIdFlow(id)
-    fun getTeamFlow(id: String): Flow<TeamEntity?> = repository.getTeamByIdFlow(id)
-    fun getLeagueFlow(id: String): Flow<LeagueEntity?> = repository.getLeagueByIdFlow(id)
+    fun loadTeamDetails(id: String) {
+        viewModelScope.launch {
+            try {
+                repository.loadTeamDetails(id)
+            } catch (e: Exception) {
+                android.util.Log.e("SportsViewModel", "Team details failed", e)
+            }
+        }
+    }
+
+    fun loadLeagueDetails(id: String) {
+        viewModelScope.launch {
+            try {
+                repository.loadLeagueDetails(id)
+            } catch (e: Exception) {
+                android.util.Log.e("SportsViewModel", "League details failed", e)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        repository.stopLiveUpdates()
+        super.onCleared()
+    }
 
     class Factory(private val repository: SportsRepository) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

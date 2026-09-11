@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.data.model.*
+import com.example.data.model.LeagueEntity
+import com.example.data.model.MatchEntity
+import com.example.data.model.NewsEntity
+import com.example.data.model.TeamEntity
 
 @Database(
     entities = [
@@ -13,7 +16,7 @@ import com.example.data.model.*
         LeagueEntity::class,
         NewsEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,8 +33,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "natijeh_sports_db"
                 )
-                .fallbackToDestructiveMigration()
-                .build()
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

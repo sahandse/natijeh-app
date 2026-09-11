@@ -8,58 +8,54 @@ data class MatchEntity(
     @PrimaryKey val id: String,
     val homeTeamId: String,
     val homeTeamName: String,
+    val homeTeamLogo: String = "",
     val awayTeamId: String,
     val awayTeamName: String,
+    val awayTeamLogo: String = "",
     val homeScore: Int,
     val awayScore: Int,
-    val status: String, // "LIVE", "SCHEDULED", "FINISHED"
+    val status: String,
+    val statusTitle: String = "",
+    val liveTime: String = "",
     val minute: Int,
-    val date: String, // "YYYY-MM-DD"
-    val time: String, // "HH:MM"
+    val date: String,
+    val time: String,
+    val utcStart: String = "",
+    val dayOffset: Int = 0,
     val leagueId: String,
     val leagueName: String,
+    val leagueLogo: String = "",
     val venue: String,
     val referee: String,
-    val attendance: String,
-    val eventsJson: String, // JSON representing List<MatchEvent>
-    val statsJson: String,  // JSON representing MatchStats
-    val lineupsJson: String, // JSON representing MatchLineups
-    val momentumJson: String, // JSON representing List<Int> (momentum points)
-    val h2hJson: String,     // JSON representing HeadToHeadData
+    val attendance: String = "",
+    val eventsJson: String,
+    val statsJson: String,
+    val lineupsJson: String,
+    val momentumJson: String = "[]",
+    val h2hJson: String,
     val isFavorite: Boolean = false
 )
 
 data class MatchEvent(
     val minute: Int,
-    val type: String, // "GOAL", "CARD_YELLOW", "CARD_RED", "SUBSTITUTION", "VAR_REVIEW", "PENALTY"
+    val type: String,
     val isHome: Boolean,
     val playerName: String,
-    val detail: String // e.g., "Assisted by Player X" or "Red Card for foul"
+    val detail: String
 )
 
-data class MatchStats(
-    val possessionHome: Int,
-    val possessionAway: Int,
-    val shotsHome: Int,
-    val shotsAway: Int,
-    val shotsOnTargetHome: Int,
-    val shotsOnTargetAway: Int,
-    val expectedGoalsHome: Double,
-    val expectedGoalsAway: Double,
-    val passAccuracyHome: Int,
-    val passAccuracyAway: Int,
-    val cornersHome: Int,
-    val cornersAway: Int,
-    val foulsHome: Int,
-    val foulsAway: Int,
-    val offsidesHome: Int,
-    val offsidesAway: Int
+data class StatItem(
+    val title: String,
+    val home: String,
+    val away: String,
+    val homePercent: Int = 50,
+    val awayPercent: Int = 50
 )
 
 data class PlayerLineup(
     val number: Int,
     val name: String,
-    val position: String, // "GK", "DF", "MF", "FW"
+    val position: String,
     val rating: Double,
     val hasYellowCard: Boolean = false,
     val hasRedCard: Boolean = false,
@@ -68,8 +64,8 @@ data class PlayerLineup(
 )
 
 data class MatchLineups(
-    val homeFormation: String, // e.g., "4-3-3"
-    val awayFormation: String, // e.g., "4-2-3-1"
+    val homeFormation: String,
+    val awayFormation: String,
     val homeStarting: List<PlayerLineup>,
     val homeBench: List<PlayerLineup>,
     val awayStarting: List<PlayerLineup>,
@@ -96,13 +92,16 @@ data class HeadToHeadData(
 data class TeamEntity(
     @PrimaryKey val id: String,
     val name: String,
-    val coach: String,
-    val stadium: String,
-    val founded: String,
-    val marketValue: String,
-    val squadJson: String, // List<SquadPlayer>
-    val formation: String,
-    val honoursJson: String, // List<String>
+    val logo: String = "",
+    val coach: String = "",
+    val stadium: String = "",
+    val founded: String = "",
+    val marketValue: String = "",
+    val squadJson: String,
+    val formation: String = "",
+    val honoursJson: String = "[]",
+    val recentJson: String = "[]",
+    val rankLabel: String = "",
     val isFavorite: Boolean = false
 )
 
@@ -117,7 +116,9 @@ data class SquadPlayer(
     val marketValue: String,
     val goals: Int,
     val assists: Int,
-    val appearances: Int
+    val appearances: Int,
+    val portrait: String = "",
+    val shirtNumber: Int = 0
 )
 
 @Entity(tableName = "leagues")
@@ -125,8 +126,9 @@ data class LeagueEntity(
     @PrimaryKey val id: String,
     val name: String,
     val logo: String,
-    val country: String,
-    val standingsJson: String, // List<StandingRow>
+    val country: String = "",
+    val standingsJson: String,
+    val standingUrl: String = "",
     val isFavorite: Boolean = false
 )
 
