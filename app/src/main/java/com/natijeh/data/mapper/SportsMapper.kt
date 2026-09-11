@@ -11,7 +11,7 @@ import com.natijeh.data.model.MatchLineups
 import com.natijeh.data.model.PlayerLineup
 import com.natijeh.data.model.ScorerRow
 import com.natijeh.data.model.SquadPlayer
-import com.natijeh.data.model.StandingRow
+import com.natijeh.data.model.TeamResultMatch
 import com.natijeh.data.model.StatItem
 import com.natijeh.data.remote.dto.ApiEvent
 import com.natijeh.data.remote.dto.ApiFixtureRound
@@ -68,18 +68,26 @@ object SportsMapper {
                 else -> "EVENT"
             }
             val playerName = when (type) {
-                "GOAL", "PENALTY" -> event.strickerName ?: event.offendingPlayerName.orEmpty()
+                "GOAL", "PENALTY" -> event.strickerName ?: event.kickerName ?: event.offendingPlayerName.orEmpty()
                 "CARD_YELLOW", "CARD_RED" -> event.offendingPlayerName.orEmpty()
-                "SUBSTITUTION" -> listOfNotNull(event.incomingPlayerName, event.outgoingPlayerName)
-                    .joinToString(" ← ")
+                "SUBSTITUTION" -> event.incomingPlayerName.orEmpty().ifBlank { "بازیکن" }
                 else -> event.offendingPlayerName ?: event.strickerName.orEmpty()
+            }
+            val playerId = when (type) {
+                "GOAL", "PENALTY" -> event.strikerId ?: event.kickerId
+                "CARD_YELLOW", "CARD_RED" -> event.offendingPlayerId
+                "SUBSTITUTION" -> event.incomingPlayerId
+                else -> event.strikerId ?: event.offendingPlayerId
             }
             MatchEvent(
                 minute = event.rawTime ?: event.time?.takeWhile { it.isDigit() }?.toIntOrNull() ?: 0,
                 type = type,
                 isHome = event.side == 0,
                 playerName = playerName.ifBlank { "بازیکن" },
-                detail = event.description.orEmpty()
+                detail = event.description.orEmpty(),
+                playerId = playerId?.takeIf { it != 0 }?.toString().orEmpty(),
+                extraPlayerName = event.outgoingPlayerName.orEmpty(),
+                extraPlayerId = event.outgoingPlayerId?.takeIf { it != 0 }?.toString().orEmpty()
             )
         }.sortedBy { it.minute }
     }
@@ -136,7 +144,10 @@ object SportsMapper {
                     number = player.shirtNumber ?: 0,
                     name = player.name.orEmpty(),
                     position = position,
-                    rating = 0.0
+                    rating = 0.0,
+                    playerId = player.id?.takeIf { it != 0 }?.toString().orEmpty(),
+                    line = index,
+                    portrait = player.portrait.orEmpty()
                 )
             }
         }
@@ -148,7 +159,10 @@ object SportsMapper {
                 number = it.shirtNumber ?: 0,
                 name = it.name.orEmpty(),
                 position = "",
-                rating = 0.0
+                rating = 0.0,
+                playerId = it.id?.takeIf { id -> id != 0 }?.toString().orEmpty(),
+                line = -1,
+                portrait = it.portrait.orEmpty()
             )
         }
     }
@@ -176,6 +190,11 @@ object SportsMapper {
             val position = group.role.orEmpty()
             group.players.orEmpty().map { player ->
                 SquadPlayer(
+                    id = (player.id ?: 0).takeIf { it != 0 }?.toString()
+                        ?: parseIdFromLink(player.link, "person")
+                        ?: parseIdFromLink(player.link, "players")
+                        ?: parseIdFromLink(player.link, "player")
+                        ?: "",
                     name = player.name.orEmpty(),
                     nationality = "",
                     age = player.age ?: 0,
@@ -186,9 +205,10 @@ object SportsMapper {
                     marketValue = "",
                     goals = 0,
                     assists = 0,
-                    appearances = player.shirtNumber ?: 0,
+                    appearances = 0,
                     portrait = player.portrait.orEmpty(),
-                    shirtNumber = player.shirtNumber ?: 0
+                    shirtNumber = player.shirtNumber ?: 0,
+                    countryFlag = player.countryFlag.orEmpty()
                 )
             }
         }
@@ -335,6 +355,50 @@ object SportsMapper {
                 matches = matches
             )
         }.filter { it.matches.isNotEmpty() }
+    }
+
+    fun squadBucket(role: String): String {
+        val compact = role.replace("\u200c", "").replace(" ", "")
+        return when {
+            compact.contains("دروازه") -> "GK"
+            compact.contains("مدافع") || compact.contains("دفاع") -> "DF"
+            compact.contains("هافبک") || compact.contains("میانه") -> "MF"
+            compact.contains("مهاجم") || compact.contains("حمله") -> "FW"
+            else -> "OT"
+        }
+    }
+
+    fun mapTeamResults(items: List<ApiTeamMatchItem>?, teamId: String): List<TeamResultMatch> {
+        return items.orEmpty().map { item ->
+            TeamResultMatch(
+                id = (item.id ?: 0).takeIf { it != 0 }?.toString()
+                    ?: parseIdFromLink(item.link, "match").orEmpty(),
+                date = item.date.orEmpty(),
+                time = item.time.orEmpty(),
+                homeTeam = item.host?.name.orEmpty(),
+                awayTeam = item.guest?.name.orEmpty(),
+                homeTeamId = sideId(item.host),
+                awayTeamId = sideId(item.guest),
+                homeScore = item.goals?.host,
+                awayScore = item.goals?.guest,
+                leagueName = item.league?.name ?: item.league?.title.orEmpty(),
+                status = mapStatus(item.isLive == true, item.status)
+            )
+        }.filter { it.id.isNotBlank() }
+    }
+
+    fun resultVersus(match: TeamResultMatch, teamId: String): String {
+        if (match.status != "FINISHED" || match.homeScore == null || match.awayScore == null) return "SCHEDULED"
+        val isHome = match.homeTeamId == teamId
+        val isAway = match.awayTeamId == teamId
+        if (!isHome && !isAway) return "SCHEDULED"
+        val thisScore = if (isHome) match.homeScore else match.awayScore
+        val otherScore = if (isHome) match.awayScore else match.homeScore
+        return when {
+            thisScore > otherScore -> "WIN"
+            thisScore < otherScore -> "LOSS"
+            else -> "DRAW"
+        }
     }
 
     fun tabHref(leagueTabs: List<com.natijeh.data.remote.dto.ApiTab>?, type: Int, relContains: String? = null): String? {

@@ -4,6 +4,7 @@ import com.natijeh.data.remote.dto.ApiGlanceResponse
 import com.natijeh.data.remote.dto.ApiLeagueMatchesResponse
 import com.natijeh.data.remote.dto.ApiLiveLeague
 import com.natijeh.data.remote.dto.ApiMatchDetail
+import com.natijeh.data.remote.dto.ApiPlayerDetail
 import com.natijeh.data.remote.dto.ApiPlayerStatGroup
 import com.natijeh.data.remote.dto.ApiSquadGroup
 import com.natijeh.data.remote.dto.ApiStandingResponse
@@ -40,6 +41,7 @@ class Varzesh3Service(
     private val playerStatsAdapter = moshi.adapter<List<ApiPlayerStatGroup>>(
         Types.newParameterizedType(List::class.java, ApiPlayerStatGroup::class.java)
     )
+    private val playerAdapter = moshi.adapter(ApiPlayerDetail::class.java)
 
     fun fetchLiveScore(offset: Int): List<ApiLiveLeague> {
         val path = if (offset == 0) "today" else offset.toString()
@@ -92,6 +94,11 @@ class Varzesh3Service(
     fun fetchPlayerStats(url: String): List<ApiPlayerStatGroup> {
         val json = get(url)
         return playerStatsAdapter.fromJson(json).orEmpty()
+    }
+
+    fun fetchPlayer(playerId: String): ApiPlayerDetail? {
+        val json = get("$BASE/football/players/$playerId")
+        return playerAdapter.fromJson(json)
     }
 
     private fun get(url: String): String {

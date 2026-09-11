@@ -43,15 +43,100 @@ class SportsMapperTest {
     fun `mapEvents translates goals cards and substitutions`() {
         val events = SportsMapper.mapEvents(
             listOf(
-                ApiEvent(eventType = 1, rawTime = 54, side = 0, strickerName = "عارف رستمی", description = "گل"),
-                ApiEvent(eventType = 2, rawTime = 43, side = 1, cardType = 1, offendingPlayerName = "شجاع", description = "زرد"),
-                ApiEvent(eventType = 4, rawTime = 61, side = 0, incomingPlayerName = "موسوی", outgoingPlayerName = "بازگیر")
+                ApiEvent(eventType = 1, rawTime = 54, side = 0, strickerName = "عارف رستمی", strikerId = 901, description = "گل"),
+                ApiEvent(eventType = 2, rawTime = 43, side = 1, cardType = 1, offendingPlayerName = "شجاع", offendingPlayerId = 12, description = "زرد"),
+                ApiEvent(
+                    eventType = 4,
+                    rawTime = 61,
+                    side = 0,
+                    incomingPlayerName = "موسوی",
+                    incomingPlayerId = 33,
+                    outgoingPlayerName = "بازگیر",
+                    outgoingPlayerId = 44
+                )
             )
         )
         assertEquals("GOAL", events[1].type)
+        assertEquals("901", events[1].playerId)
         assertEquals("CARD_YELLOW", events[0].type)
+        assertEquals("12", events[0].playerId)
         assertEquals("SUBSTITUTION", events[2].type)
-        assertEquals("موسوی ← بازگیر", events[2].playerName)
+        assertEquals("موسوی", events[2].playerName)
+        assertEquals("33", events[2].playerId)
+        assertEquals("بازگیر", events[2].extraPlayerName)
+        assertEquals("44", events[2].extraPlayerId)
+    }
+
+    @Test
+    fun `squadBucket maps persian roles`() {
+        assertEquals("GK", SportsMapper.squadBucket("دروازه بان ها"))
+        assertEquals("DF", SportsMapper.squadBucket("مدافعان"))
+        assertEquals("MF", SportsMapper.squadBucket("هافبک ها"))
+        assertEquals("FW", SportsMapper.squadBucket("مهاجمان"))
+        assertEquals("OT", SportsMapper.squadBucket("سایر"))
+    }
+
+    @Test
+    fun `mapSquad keeps player id from numeric or person link`() {
+        val fromId = com.natijeh.data.remote.dto.ApiSquadGroup(
+            role = "مهاجمان",
+            players = listOf(
+                com.natijeh.data.remote.dto.ApiSquadPlayer(id = 77, name = "علی", shirtNumber = 9)
+            )
+        )
+        val fromLink = com.natijeh.data.remote.dto.ApiSquadGroup(
+            role = "دروازه بان ها",
+            players = listOf(
+                com.natijeh.data.remote.dto.ApiSquadPlayer(id = 0, name = "حسین", link = "/person/55/حسین")
+            )
+        )
+        val mapped = SportsMapper.mapSquad(listOf(fromId, fromLink))
+        assertEquals("77", mapped[0].id)
+        assertEquals("FW", SportsMapper.squadBucket(mapped[0].position))
+        assertEquals("55", mapped[1].id)
+        assertEquals("GK", SportsMapper.squadBucket(mapped[1].position))
+    }
+
+    @Test
+    fun `resultVersus colors win loss and draw for this team`() {
+        val win = com.natijeh.data.model.TeamResultMatch(
+            id = "1",
+            date = "1404/01/01",
+            time = "19:00",
+            homeTeam = "استقلال",
+            awayTeam = "پرسپولیس",
+            homeTeamId = "4",
+            awayTeamId = "6",
+            homeScore = 2,
+            awayScore = 1,
+            status = "FINISHED"
+        )
+        assertEquals("WIN", SportsMapper.resultVersus(win, "4"))
+        assertEquals("LOSS", SportsMapper.resultVersus(win, "6"))
+        val draw = win.copy(homeScore = 1, awayScore = 1)
+        assertEquals("DRAW", SportsMapper.resultVersus(draw, "4"))
+        val upcoming = win.copy(homeScore = null, awayScore = null, status = "SCHEDULED")
+        assertEquals("SCHEDULED", SportsMapper.resultVersus(upcoming, "4"))
+    }
+
+    @Test
+    fun `mapTeamResults reads match id from link when numeric id is zero`() {
+        val item = ApiTeamMatchItem(
+            id = 0,
+            date = "1404/01/02",
+            time = "17:30",
+            status = 7,
+            host = ApiSide(id = 0, name = "استقلال", link = "/football/team/4/استقلال"),
+            guest = ApiSide(id = 0, name = "پرسپولیس", link = "/football/team/6/پرسپولیس"),
+            goals = ApiGoals(host = 1, guest = 0),
+            link = "/football/match/888/derby"
+        )
+        val mapped = SportsMapper.mapTeamResults(listOf(item), "4")
+        assertEquals(1, mapped.size)
+        assertEquals("888", mapped[0].id)
+        assertEquals("4", mapped[0].homeTeamId)
+        assertEquals("6", mapped[0].awayTeamId)
+        assertEquals("WIN", SportsMapper.resultVersus(mapped[0], "4"))
     }
 
     @Test

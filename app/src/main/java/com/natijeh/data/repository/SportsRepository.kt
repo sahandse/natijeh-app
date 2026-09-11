@@ -11,7 +11,9 @@ import com.natijeh.data.model.LeagueEntity
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.MatchLineups
 import com.natijeh.data.model.NewsEntity
+import com.natijeh.data.model.PlayerEntity
 import com.natijeh.data.model.TeamEntity
+import com.natijeh.data.model.TeamResultMatch
 import com.natijeh.data.notify.GoalNotifier
 import com.natijeh.data.notify.LiveScoreService
 import com.natijeh.data.remote.Varzesh3Service
@@ -58,8 +60,8 @@ class SportsRepository(
     private val squadAdapter = moshi.adapter<List<com.natijeh.data.model.SquadPlayer>>(
         Types.newParameterizedType(List::class.java, com.natijeh.data.model.SquadPlayer::class.java)
     )
-    private val recentAdapter = moshi.adapter<List<com.natijeh.data.model.HeadToHeadMatch>>(
-        Types.newParameterizedType(List::class.java, com.natijeh.data.model.HeadToHeadMatch::class.java)
+    private val recentAdapter = moshi.adapter<List<TeamResultMatch>>(
+        Types.newParameterizedType(List::class.java, TeamResultMatch::class.java)
     )
     private val scorersAdapter = moshi.adapter<List<com.natijeh.data.model.ScorerRow>>(
         Types.newParameterizedType(List::class.java, com.natijeh.data.model.ScorerRow::class.java)
@@ -76,6 +78,7 @@ class SportsRepository(
     val favoriteLeagues: Flow<List<LeagueEntity>> = dao.getFavoriteLeagues()
     val allLeagues: Flow<List<LeagueEntity>> = dao.getAllLeagues()
     val allTeams: Flow<List<TeamEntity>> = dao.getAllTeams()
+    val favoritePlayers: Flow<List<PlayerEntity>> = dao.getFavoritePlayers()
     val newsFeed: Flow<List<NewsEntity>> = dao.getAllNews()
 
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -85,10 +88,18 @@ class SportsRepository(
     fun getMatchByIdFlow(id: String): Flow<MatchEntity?> = dao.getMatchByIdFlow(id)
     fun getTeamByIdFlow(id: String): Flow<TeamEntity?> = dao.getTeamByIdFlow(id)
     fun getLeagueByIdFlow(id: String): Flow<LeagueEntity?> = dao.getLeagueByIdFlow(id)
+    fun getPlayerByIdFlow(id: String): Flow<PlayerEntity?> = dao.getPlayerByIdFlow(id)
 
     suspend fun setMatchFavorite(id: String, isFav: Boolean) = dao.setMatchFavorite(id, isFav)
     suspend fun setTeamFavorite(id: String, isFav: Boolean) = dao.setTeamFavorite(id, isFav)
     suspend fun setLeagueFavorite(id: String, isFav: Boolean) = dao.setLeagueFavorite(id, isFav)
+
+    suspend fun setPlayerFavorite(id: String, isFav: Boolean) {
+        if (dao.getPlayerById(id) == null) {
+            loadPlayer(id)
+        }
+        dao.setPlayerFavorite(id, isFav)
+    }
 
     fun startLiveUpdates() {
         if (pollJob?.isActive == true) return
@@ -346,48 +357,129 @@ class SportsRepository(
             Log.e(tag, "Squad failed", e)
             emptyList()
         }
-        val glance = try {
-            api.fetchTeamGlance(teamId)?.carousel?.matches.orEmpty()
-        } catch (_: Exception) {
+        val recent = try {
+            SportsMapper.mapTeamResults(api.fetchTeamResults(teamId)?.items, teamId)
+        } catch (e: Exception) {
+            Log.e(tag, "Team results failed", e)
             emptyList()
         }
-        val recent = glance.map {
-            com.natijeh.data.model.HeadToHeadMatch(
-                date = it.date.orEmpty(),
-                homeTeam = it.host?.name.orEmpty(),
-                awayTeam = it.guest?.name.orEmpty(),
-                score = if (it.goals?.host != null && it.goals.guest != null) {
-                    "${it.goals.host} - ${it.goals.guest}"
-                } else {
-                    it.time.orEmpty()
-                }
-            )
-        }
-        val standingLabel = try {
-            val standing = api.fetchStandings("https://web-api.varzesh3.com/v2.0/football/teams/$teamId/standing")
+        val prev = dao.getTeamById(teamId)
+        var rank = prev?.rank ?: 0
+        var points = prev?.points ?: 0
+        var won = prev?.won ?: 0
+        var drawn = prev?.drawn ?: 0
+        var lost = prev?.lost ?: 0
+        var played = prev?.played ?: 0
+        var goalsFor = prev?.goalsFor ?: 0
+        var goalsAgainst = prev?.goalsAgainst ?: 0
+        var leagueName = prev?.leagueName.orEmpty()
+        var standingLabel = prev?.rankLabel.orEmpty()
+        try {
+            val standing = api.fetchStandings("${Varzesh3Service.BASE}/football/teams/$teamId/standing")
             val row = standing?.teams?.firstOrNull { it.id?.toString() == teamId }
                 ?: standing?.teams?.firstOrNull { it.name == team?.name }
+            val title = SportsMapper.cleanLeagueTitle(standing?.title.orEmpty())
+            if (title.isNotBlank()) leagueName = title
             if (row != null) {
-                "رتبه ${row.rank} | ${row.points} امتیاز | ${standing?.title.orEmpty()}"
-            } else {
-                standing?.title.orEmpty()
+                rank = row.rank ?: 0
+                points = row.points ?: 0
+                won = row.wins ?: 0
+                drawn = row.draws ?: 0
+                lost = row.losses ?: 0
+                played = row.played ?: 0
+                goalsFor = row.goalFor ?: 0
+                goalsAgainst = row.goalAgainst ?: 0
             }
-        } catch (_: Exception) {
-            ""
+            standingLabel = buildString {
+                if (rank > 0) append("رتبه $rank")
+                if (leagueName.isNotBlank()) {
+                    if (isNotEmpty()) append(" · ")
+                    append(leagueName)
+                }
+            }.ifBlank { standingLabel }
+        } catch (e: Exception) {
+            Log.w(tag, "Team standing failed", e)
         }
-        val prev = dao.getTeamById(teamId)
+        var coach = prev?.coach.orEmpty()
+        var formation = prev?.formation.orEmpty()
+        val latestFinished = recent.firstOrNull { it.status == "FINISHED" && it.id.isNotBlank() }
+        if (latestFinished != null) {
+            try {
+                val detail = api.fetchMatch(latestFinished.id)
+                if (detail != null) {
+                    val lineups = SportsMapper.mapLineups(detail.lineup?.host, detail.lineup?.guest)
+                    val isHome = SportsMapper.sideId(detail.host) == teamId
+                    val fromMatch = if (isHome) lineups.homeCoach else lineups.awayCoach
+                    if (fromMatch.isNotBlank()) coach = fromMatch
+                    val form = if (isHome) lineups.homeFormation else lineups.awayFormation
+                    if (form.isNotBlank() && form != "-") formation = form
+                }
+            } catch (e: Exception) {
+                Log.w(tag, "Coach from lineup failed", e)
+            }
+        }
         dao.insertTeams(
             listOf(
                 TeamEntity(
                     id = teamId,
                     name = team?.name ?: prev?.name ?: teamId,
                     logo = team?.logo?.ifBlank { prev?.logo.orEmpty() } ?: prev?.logo.orEmpty(),
-                    coach = prev?.coach.orEmpty(),
-                    stadium = prev?.stadium.orEmpty(),
-                    formation = prev?.formation.orEmpty(),
+                    coach = coach,
+                    stadium = "",
+                    formation = formation,
                     squadJson = squadAdapter.toJson(squad),
                     recentJson = recentAdapter.toJson(recent),
                     rankLabel = standingLabel,
+                    rank = rank,
+                    points = points,
+                    won = won,
+                    drawn = drawn,
+                    lost = lost,
+                    played = played,
+                    goalsFor = goalsFor,
+                    goalsAgainst = goalsAgainst,
+                    leagueName = leagueName,
+                    isFavorite = prev?.isFavorite == true
+                )
+            )
+        )
+    }
+
+    suspend fun loadPlayer(playerId: String) = withContext(Dispatchers.IO) {
+        if (playerId.isBlank() || playerId == "0") return@withContext
+        val prev = dao.getPlayerById(playerId)
+        val detail = try {
+            api.fetchPlayer(playerId)
+        } catch (e: Exception) {
+            Log.e(tag, "Player $playerId failed", e)
+            null
+        }
+        if (detail == null && prev == null) {
+            dao.insertPlayers(listOf(PlayerEntity(id = playerId, name = "بازیکن")))
+            return@withContext
+        }
+        val goals = dao.getAllLeagues().first()
+            .flatMap { scorersAdapter.fromJson(it.scorersJson).orEmpty() }
+            .firstOrNull { it.playerId == playerId }
+            ?.goals
+            ?: prev?.goals
+            ?: 0
+        val teamId = SportsMapper.sideId(detail?.team).takeIf { it.isNotBlank() && it != "unknown" }
+            ?: prev?.teamId.orEmpty()
+        dao.insertPlayers(
+            listOf(
+                PlayerEntity(
+                    id = playerId,
+                    name = detail?.name ?: prev?.name ?: playerId,
+                    portrait = detail?.portrait?.ifBlank { prev?.portrait.orEmpty() } ?: prev?.portrait.orEmpty(),
+                    teamId = teamId,
+                    teamName = detail?.team?.name ?: prev?.teamName.orEmpty(),
+                    teamLogo = detail?.team?.logo ?: prev?.teamLogo.orEmpty(),
+                    shirtNumber = detail?.shirtNumber ?: prev?.shirtNumber ?: 0,
+                    position = detail?.role ?: prev?.position.orEmpty(),
+                    age = detail?.age ?: prev?.age ?: 0,
+                    country = detail?.country ?: prev?.country.orEmpty(),
+                    goals = goals,
                     isFavorite = prev?.isFavorite == true
                 )
             )
@@ -545,6 +637,15 @@ class SportsRepository(
                 honoursJson = stub.honoursJson.ifBlank { prev?.honoursJson ?: "[]" },
                 recentJson = if (stub.recentJson != "[]") stub.recentJson else prev?.recentJson ?: "[]",
                 rankLabel = stub.rankLabel.ifBlank { prev?.rankLabel.orEmpty() },
+                rank = stub.rank.takeIf { it > 0 } ?: prev?.rank ?: 0,
+                points = stub.points.takeIf { it > 0 } ?: prev?.points ?: 0,
+                won = stub.won.takeIf { it > 0 } ?: prev?.won ?: 0,
+                drawn = stub.drawn.takeIf { it > 0 } ?: prev?.drawn ?: 0,
+                lost = stub.lost.takeIf { it > 0 } ?: prev?.lost ?: 0,
+                played = stub.played.takeIf { it > 0 } ?: prev?.played ?: 0,
+                goalsFor = stub.goalsFor.takeIf { it > 0 } ?: prev?.goalsFor ?: 0,
+                goalsAgainst = stub.goalsAgainst.takeIf { it > 0 } ?: prev?.goalsAgainst ?: 0,
+                leagueName = stub.leagueName.ifBlank { prev?.leagueName.orEmpty() },
                 logo = stub.logo.ifBlank { prev?.logo.orEmpty() },
                 isFavorite = stub.isFavorite || prev?.isFavorite == true
             )

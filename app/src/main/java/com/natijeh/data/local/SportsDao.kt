@@ -7,6 +7,7 @@ import androidx.room.Query
 import com.natijeh.data.model.LeagueEntity
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.NewsEntity
+import com.natijeh.data.model.PlayerEntity
 import com.natijeh.data.model.TeamEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -92,4 +93,19 @@ interface SportsDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNews(news: List<NewsEntity>)
+
+    @Query("SELECT * FROM players WHERE id = :id")
+    fun getPlayerByIdFlow(id: String): Flow<PlayerEntity?>
+
+    @Query("SELECT * FROM players WHERE id = :id")
+    suspend fun getPlayerById(id: String): PlayerEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlayers(players: List<PlayerEntity>)
+
+    @Query("UPDATE players SET isFavorite = :isFav WHERE id = :id")
+    suspend fun setPlayerFavorite(id: String, isFav: Boolean)
+
+    @Query("SELECT * FROM players WHERE isFavorite = 1 ORDER BY name ASC")
+    fun getFavoritePlayers(): Flow<List<PlayerEntity>>
 }

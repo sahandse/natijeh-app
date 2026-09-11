@@ -42,7 +42,10 @@ data class MatchEvent(
     val type: String,
     val isHome: Boolean,
     val playerName: String,
-    val detail: String
+    val detail: String,
+    val playerId: String = "",
+    val extraPlayerName: String = "",
+    val extraPlayerId: String = ""
 )
 
 data class StatItem(
@@ -61,7 +64,10 @@ data class PlayerLineup(
     val hasYellowCard: Boolean = false,
     val hasRedCard: Boolean = false,
     val substitutedIn: Int? = null,
-    val substitutedOut: Int? = null
+    val substitutedOut: Int? = null,
+    val playerId: String = "",
+    val line: Int = 0,
+    val portrait: String = ""
 )
 
 data class MatchLineups(
@@ -103,10 +109,20 @@ data class TeamEntity(
     val honoursJson: String = "[]",
     val recentJson: String = "[]",
     val rankLabel: String = "",
+    val rank: Int = 0,
+    val points: Int = 0,
+    val won: Int = 0,
+    val drawn: Int = 0,
+    val lost: Int = 0,
+    val played: Int = 0,
+    val goalsFor: Int = 0,
+    val goalsAgainst: Int = 0,
+    val leagueName: String = "",
     val isFavorite: Boolean = false
 )
 
 data class SquadPlayer(
+    val id: String = "",
     val name: String,
     val nationality: String,
     val age: Int,
@@ -119,7 +135,8 @@ data class SquadPlayer(
     val assists: Int,
     val appearances: Int,
     val portrait: String = "",
-    val shirtNumber: Int = 0
+    val shirtNumber: Int = 0,
+    val countryFlag: String = ""
 )
 
 @Entity(tableName = "leagues")
@@ -147,6 +164,36 @@ data class StandingRow(
     val goalsFor: Int,
     val goalsAgainst: Int,
     val points: Int
+)
+
+data class TeamResultMatch(
+    val id: String,
+    val date: String,
+    val time: String,
+    val homeTeam: String,
+    val awayTeam: String,
+    val homeTeamId: String = "",
+    val awayTeamId: String = "",
+    val homeScore: Int? = null,
+    val awayScore: Int? = null,
+    val leagueName: String = "",
+    val status: String = "FINISHED"
+)
+
+@Entity(tableName = "players")
+data class PlayerEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val portrait: String = "",
+    val teamId: String = "",
+    val teamName: String = "",
+    val teamLogo: String = "",
+    val shirtNumber: Int = 0,
+    val position: String = "",
+    val age: Int = 0,
+    val country: String = "",
+    val goals: Int = 0,
+    val isFavorite: Boolean = false
 )
 
 data class ScorerRow(

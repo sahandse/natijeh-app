@@ -82,7 +82,8 @@ fun LeagueDetailScreen(
     viewModel: SportsViewModel,
     onBack: () -> Unit,
     onNavigateToTeam: (String) -> Unit,
-    onNavigateToMatch: (String) -> Unit
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToPlayer: (String) -> Unit = {}
 ) {
     val league by viewModel.getLeagueFlow(leagueId).collectAsStateWithLifecycle(initialValue = null)
     var selectedTab by remember { mutableStateOf("table") }
@@ -161,7 +162,7 @@ fun LeagueDetailScreen(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 when (selectedTab) {
-                    "scorers" -> ScorersTab(scorers, onNavigateToTeam)
+                    "scorers" -> ScorersTab(scorers, onNavigateToTeam, onNavigateToPlayer)
                     "week" -> FixturesTab(fixtures, onNavigateToMatch, onNavigateToTeam)
                     else -> StandingsTab(standings, onNavigateToTeam)
                 }
@@ -258,7 +259,11 @@ private fun StandingsTab(standings: List<StandingRow>, onNavigateToTeam: (String
 }
 
 @Composable
-private fun ScorersTab(scorers: List<ScorerRow>, onNavigateToTeam: (String) -> Unit) {
+private fun ScorersTab(
+    scorers: List<ScorerRow>,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToPlayer: (String) -> Unit
+) {
     if (scorers.isEmpty()) {
         EmptyState(message = "جدول گلزنان هنوز منتشر نشده است.")
         return
@@ -266,12 +271,13 @@ private fun ScorersTab(scorers: List<ScorerRow>, onNavigateToTeam: (String) -> U
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(scorers, key = { _, row -> row.playerId }) { index, row ->
             val rank = index + 1
+            val canOpenPlayer = row.playerId.isNotBlank() && row.playerId != "0"
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = natijehCardElevation(),
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth().clickable(enabled = row.teamId.isNotBlank() && row.teamId != "0") {
-                    onNavigateToTeam(row.teamId)
+                modifier = Modifier.fillMaxWidth().clickable(enabled = canOpenPlayer) {
+                    onNavigateToPlayer(row.playerId)
                 }
             ) {
                 Row(
@@ -304,7 +310,14 @@ private fun ScorersTab(scorers: List<ScorerRow>, onNavigateToTeam: (String) -> U
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(row.name, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
-                        Text(row.teamName, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            row.teamName,
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.clickable(enabled = row.teamId.isNotBlank() && row.teamId != "0") {
+                                onNavigateToTeam(row.teamId)
+                            }
+                        )
                     }
                     Text("${row.goals} گل", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 }

@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import com.natijeh.data.model.LeagueEntity
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.NewsEntity
+import com.natijeh.data.model.PlayerEntity
 import com.natijeh.data.model.TeamEntity
 
 @Database(
@@ -14,9 +15,10 @@ import com.natijeh.data.model.TeamEntity
         MatchEntity::class,
         TeamEntity::class,
         LeagueEntity::class,
-        NewsEntity::class
+        NewsEntity::class,
+        PlayerEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

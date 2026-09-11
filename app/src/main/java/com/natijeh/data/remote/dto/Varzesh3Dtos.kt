@@ -101,9 +101,16 @@ data class ApiEvent(
     val cardType: Int? = null,
     val offendingPlayerName: String? = null,
     val strickerName: String? = null,
+    val strikerId: Int? = null,
     val assisterName: String? = null,
+    val assisterId: Int? = null,
     val incomingPlayerName: String? = null,
+    val incomingPlayerId: Int? = null,
     val outgoingPlayerName: String? = null,
+    val outgoingPlayerId: Int? = null,
+    val kickerId: Int? = null,
+    val kickerName: String? = null,
+    val offendingPlayerId: Int? = null,
     val goalType: Int? = null
 )
 
@@ -186,6 +193,17 @@ data class ApiTeamDetail(
     val followerCount: Int? = null
 )
 
+data class ApiPlayerDetail(
+    val id: Int? = null,
+    val name: String? = null,
+    val portrait: String? = null,
+    val shirtNumber: Int? = null,
+    val role: String? = null,
+    val age: Int? = null,
+    val country: String? = null,
+    val team: ApiSide? = null
+)
+
 data class ApiSquadGroup(
     val role: String? = null,
     val players: List<ApiSquadPlayer>? = null
@@ -196,7 +214,9 @@ data class ApiSquadPlayer(
     val name: String? = null,
     val portrait: String? = null,
     val age: Int? = null,
-    val shirtNumber: Int? = null
+    val shirtNumber: Int? = null,
+    val countryFlag: String? = null,
+    val link: String? = null
 )
 
 data class ApiTeamMatchesResponse(
@@ -209,10 +229,12 @@ data class ApiTeamMatchItem(
     val date: String? = null,
     val status: Int? = null,
     val statusTitle: String? = null,
+    val isLive: Boolean? = null,
     val host: ApiSide? = null,
     val guest: ApiSide? = null,
     val goals: ApiGoals? = null,
-    val league: ApiMatchLeague? = null
+    val league: ApiMatchLeague? = null,
+    val link: String? = null
 )
 
 data class ApiGlanceResponse(

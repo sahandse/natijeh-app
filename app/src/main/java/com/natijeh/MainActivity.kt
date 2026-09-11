@@ -30,6 +30,7 @@ import com.natijeh.data.settings.AppSettings
 import com.natijeh.ui.screens.LeagueDetailScreen
 import com.natijeh.ui.screens.MainDashboard
 import com.natijeh.ui.screens.MatchDetailScreen
+import com.natijeh.ui.screens.PlayerDetailScreen
 import com.natijeh.ui.screens.SettingsScreen
 import com.natijeh.ui.screens.TeamDetailScreen
 import com.natijeh.ui.theme.NatijehTheme
@@ -111,6 +112,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToLeague = { leagueId ->
                                         navController.navigate("league_detail/$leagueId")
+                                    },
+                                    onNavigateToPlayer = { playerId ->
+                                        navController.navigate("player_detail/$playerId")
                                     }
                                 )
                             }
@@ -122,7 +126,27 @@ class MainActivity : ComponentActivity() {
                                 TeamDetailScreen(
                                     teamId = teamId,
                                     viewModel = sportsViewModel,
-                                    onBack = { navController.popBackStack() }
+                                    onBack = { navController.popBackStack() },
+                                    onNavigateToMatch = { matchId ->
+                                        navController.navigate("match_detail/$matchId")
+                                    },
+                                    onNavigateToPlayer = { playerId ->
+                                        navController.navigate("player_detail/$playerId")
+                                    }
+                                )
+                            }
+                            composable(
+                                route = "player_detail/{playerId}",
+                                arguments = listOf(navArgument("playerId") { type = NavType.StringType })
+                            ) { backStackEntry ->
+                                val playerId = backStackEntry.arguments?.getString("playerId").orEmpty()
+                                PlayerDetailScreen(
+                                    playerId = playerId,
+                                    viewModel = sportsViewModel,
+                                    onBack = { navController.popBackStack() },
+                                    onNavigateToTeam = { teamId ->
+                                        navController.navigate("team_detail/$teamId")
+                                    }
                                 )
                             }
                             composable(
@@ -139,6 +163,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToMatch = { matchId ->
                                         navController.navigate("match_detail/$matchId")
+                                    },
+                                    onNavigateToPlayer = { playerId ->
+                                        navController.navigate("player_detail/$playerId")
                                     }
                                 )
                             }

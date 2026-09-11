@@ -7,6 +7,7 @@ import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.LeagueEntity
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.NewsEntity
+import com.natijeh.data.model.PlayerEntity
 import com.natijeh.data.model.TeamEntity
 import com.natijeh.data.repository.SportsRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -75,6 +76,9 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
     val favoriteLeagues: StateFlow<List<LeagueEntity>> = repository.favoriteLeagues
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val favoritePlayers: StateFlow<List<PlayerEntity>> = repository.favoritePlayers
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     init {
         repository.startLiveUpdates()
         refresh(forceAll = true)
@@ -137,9 +141,14 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
         viewModelScope.launch { repository.setLeagueFavorite(id, !isFavorite) }
     }
 
+    fun togglePlayerFavorite(id: String, isFavorite: Boolean) {
+        viewModelScope.launch { repository.setPlayerFavorite(id, !isFavorite) }
+    }
+
     fun getMatchFlow(id: String) = repository.getMatchByIdFlow(id)
     fun getTeamFlow(id: String) = repository.getTeamByIdFlow(id)
     fun getLeagueFlow(id: String) = repository.getLeagueByIdFlow(id)
+    fun getPlayerFlow(id: String) = repository.getPlayerByIdFlow(id)
 
     fun loadMatchDetails(id: String) {
         viewModelScope.launch {
@@ -167,6 +176,16 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
                 repository.loadLeagueDetails(id)
             } catch (e: Exception) {
                 android.util.Log.e("SportsViewModel", "League details failed", e)
+            }
+        }
+    }
+
+    fun loadPlayer(id: String) {
+        viewModelScope.launch {
+            try {
+                repository.loadPlayer(id)
+            } catch (e: Exception) {
+                android.util.Log.e("SportsViewModel", "Player details failed", e)
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.natijeh.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,9 +48,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,9 +65,11 @@ import com.natijeh.data.model.HeadToHeadData
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.MatchEvent
 import com.natijeh.data.model.MatchLineups
+import com.natijeh.data.model.PlayerLineup
 import com.natijeh.data.model.StatItem
 import com.natijeh.data.util.JalaliDate
 import com.natijeh.ui.theme.LiveRed
+import com.natijeh.ui.theme.NatijehGreen
 import com.natijeh.ui.theme.PulseDot
 import com.natijeh.ui.viewmodel.SportsViewModel
 import com.squareup.moshi.Moshi
@@ -85,7 +94,8 @@ fun MatchDetailScreen(
     keepScreenOnLive: Boolean = true,
     onBack: () -> Unit,
     onNavigateToTeam: (String) -> Unit,
-    onNavigateToLeague: (String) -> Unit
+    onNavigateToLeague: (String) -> Unit,
+    onNavigateToPlayer: (String) -> Unit = {}
 ) {
     val match by sportsViewModel.getMatchFlow(matchId).collectAsStateWithLifecycle(initialValue = null)
     var selectedTab by remember { mutableStateOf("timeline") }
@@ -156,12 +166,12 @@ fun MatchDetailScreen(
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
                     when (selectedTab) {
-                        "timeline" -> TimelineTab(eventAdapter.fromJson(m.eventsJson).orEmpty())
+                        "timeline" -> TimelineTab(eventAdapter.fromJson(m.eventsJson).orEmpty(), onNavigateToPlayer)
                         "stats" -> StatsTab(statsAdapter.fromJson(m.statsJson).orEmpty())
                         "lineups" -> {
                             val lineups = lineupsAdapter.fromJson(m.lineupsJson)
                             if (lineups != null && (lineups.homeStarting.isNotEmpty() || lineups.awayStarting.isNotEmpty())) {
-                                LineupsTab(lineups)
+                                LineupsTab(lineups, m.homeTeamName, m.awayTeamName, onNavigateToPlayer)
                             } else {
                                 EmptyState(message = "ترکیب رسمی هنوز اعلام نشده است.")
                             }
@@ -288,7 +298,7 @@ fun MatchHeaderCard(
 }
 
 @Composable
-fun TimelineTab(events: List<MatchEvent>) {
+fun TimelineTab(events: List<MatchEvent>, onNavigateToPlayer: (String) -> Unit = {}) {
     if (events.isEmpty()) {
         EmptyState(message = "رویداد خاصی در این بازی ثبت نشده است.")
     } else {
@@ -319,7 +329,10 @@ fun TimelineTab(events: List<MatchEvent>) {
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold
                                 )
-                                Text(event.playerName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
+                                EventPlayerName(event.playerName, event.playerId, onNavigateToPlayer)
+                                if (event.type == "SUBSTITUTION" && event.extraPlayerName.isNotBlank()) {
+                                    EventPlayerName("به‌جای ${event.extraPlayerName}", event.extraPlayerId, onNavigateToPlayer)
+                                }
                                 if (event.detail.isNotBlank()) {
                                     Text(event.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                                 }
@@ -336,6 +349,18 @@ fun TimelineTab(events: List<MatchEvent>) {
             }
         }
     }
+}
+
+@Composable
+private fun EventPlayerName(label: String, playerId: String, onNavigateToPlayer: (String) -> Unit) {
+    val enabled = playerId.isNotBlank() && playerId != "0"
+    Text(
+        text = label,
+        color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = if (enabled) FontWeight.Bold else FontWeight.Normal,
+        modifier = Modifier.clickable(enabled = enabled) { onNavigateToPlayer(playerId) }
+    )
 }
 
 @Composable
@@ -425,74 +450,180 @@ fun StatRow(title: String, homeValue: String, awayValue: String, homePercent: In
 }
 
 @Composable
-fun LineupsTab(lineups: MatchLineups) {
+fun LineupsTab(
+    lineups: MatchLineups,
+    homeTeamName: String = "میزبان",
+    awayTeamName: String = "میهمان",
+    onNavigateToPlayer: (String) -> Unit = {}
+) {
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(12.dp)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("سیستم بازی (مربی)", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${lineups.homeFormation} (${lineups.homeCoach.ifBlank { "—" }})", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text("${lineups.awayFormation} (${lineups.awayCoach.ifBlank { "—" }})", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+            PitchCard(
+                title = homeTeamName,
+                formation = lineups.homeFormation,
+                coach = lineups.homeCoach,
+                players = lineups.homeStarting,
+                onNavigateToPlayer = onNavigateToPlayer
+            )
         }
-        item { Text("بازیکنان اصلی", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-        val maxStart = maxOf(lineups.homeStarting.size, lineups.awayStarting.size)
-        items(maxStart) { index ->
-            val homeP = lineups.homeStarting.getOrNull(index)
-            val awayP = lineups.awayStarting.getOrNull(index)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    homeP?.let { p ->
-                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), modifier = Modifier.size(24.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall) }
-                        }
-                        Text(p.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                    awayP?.let { p ->
-                        Text(p.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), modifier = Modifier.size(24.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall) }
-                        }
-                    }
-                }
-            }
+        item {
+            PitchCard(
+                title = awayTeamName,
+                formation = lineups.awayFormation,
+                coach = lineups.awayCoach,
+                players = lineups.awayStarting,
+                onNavigateToPlayer = onNavigateToPlayer
+            )
         }
         if (lineups.homeBench.isNotEmpty() || lineups.awayBench.isNotEmpty()) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("بازیکنان ذخیره", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "بازیکنان ذخیره",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
-            val maxBench = maxOf(lineups.homeBench.size, lineups.awayBench.size)
-            items(maxBench) { index ->
-                val homeBench = lineups.homeBench.getOrNull(index)
-                val awayBench = lineups.awayBench.getOrNull(index)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        homeBench?.let { p ->
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), modifier = Modifier.size(22.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall) }
-                            }
-                            Text(p.name, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                        awayBench?.let { p ->
-                            Text(p.name, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), modifier = Modifier.size(22.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall) }
-                            }
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BenchColumn(lineups.homeBench, Modifier.weight(1f), onNavigateToPlayer)
+                    BenchColumn(lineups.awayBench, Modifier.weight(1f), onNavigateToPlayer)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PitchCard(
+    title: String,
+    formation: String,
+    coach: String,
+    players: List<PlayerLineup>,
+    onNavigateToPlayer: (String) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(
+                buildString {
+                    append(formation.ifBlank { "—" })
+                    if (coach.isNotBlank()) append(" · مربی $coach")
+                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium
+            )
+            MiniPitch(players, onNavigateToPlayer)
+        }
+    }
+}
+
+@Composable
+private fun MiniPitch(players: List<PlayerLineup>, onNavigateToPlayer: (String) -> Unit) {
+    val grouped = remember(players) { players.groupBy { it.line }.toSortedMap() }
+    val attackFirst = grouped.keys.sortedDescending()
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(248.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(NatijehGreen.copy(alpha = 0.28f))
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val mark = Color.White.copy(alpha = 0.28f)
+                val stroke = 2.dp.toPx()
+                drawLine(mark, Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f), strokeWidth = stroke)
+                drawCircle(
+                    color = mark,
+                    radius = size.minDimension * 0.12f,
+                    center = Offset(size.width / 2f, size.height / 2f),
+                    style = Stroke(width = stroke)
+                )
+                val boxW = size.width * 0.56f
+                val boxH = size.height * 0.16f
+                val left = (size.width - boxW) / 2f
+                drawRect(color = mark, topLeft = Offset(left, 0f), size = Size(boxW, boxH), style = Stroke(width = stroke))
+                drawRect(color = mark, topLeft = Offset(left, size.height - boxH), size = Size(boxW, boxH), style = Stroke(width = stroke))
+            }
+            Column(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.SpaceEvenly,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                attackFirst.forEach { line ->
+                    val row = grouped[line].orEmpty()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        row.forEach { player ->
+                            PitchPlayerChip(player, onNavigateToPlayer)
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PitchPlayerChip(player: PlayerLineup, onNavigateToPlayer: (String) -> Unit) {
+    val enabled = player.playerId.isNotBlank()
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(64.dp)
+            .clickable(enabled = enabled) { onNavigateToPlayer(player.playerId) }
+    ) {
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    if (player.number > 0) player.number.toString() else "—",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Text(
+            player.name.substringBefore(" ").ifBlank { player.name },
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun BenchColumn(players: List<PlayerLineup>, modifier: Modifier, onNavigateToPlayer: (String) -> Unit) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        players.forEach { p ->
+            val enabled = p.playerId.isNotBlank()
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.clickable(enabled = enabled) { onNavigateToPlayer(p.playerId) }
+            ) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f), modifier = Modifier.size(22.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(p.number.toString(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                Text(
+                    p.name,
+                    color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1
+                )
             }
         }
     }
