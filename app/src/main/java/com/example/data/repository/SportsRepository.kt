@@ -195,7 +195,7 @@ class SportsRepository(
         val stats = SportsMapper.mapStats(detail.stats)
         val lineups = SportsMapper.mapLineups(detail.lineup?.host, detail.lineup?.guest)
         val h2h = try {
-            val results = api.fetchTeamResults(SportsMapper.sideId(host)).items
+            val results = api.fetchTeamResults(SportsMapper.sideId(host))?.items
             SportsMapper.mapHeadToHead(host?.name.orEmpty(), guest?.name.orEmpty(), results)
         } catch (e: Exception) {
             Log.w(tag, "H2H unavailable", e)
@@ -315,7 +315,7 @@ class SportsRepository(
             val row = standing?.teams?.firstOrNull { it.id?.toString() == teamId }
                 ?: standing?.teams?.firstOrNull { it.name == team?.name }
             if (row != null) {
-                "رتبه ${row.rank} | ${row.points} امتیاز | ${standing.title.orEmpty()}"
+                "رتبه ${row.rank} | ${row.points} امتیاز | ${standing?.title.orEmpty()}"
             } else {
                 standing?.title.orEmpty()
             }
