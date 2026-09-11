@@ -31,6 +31,7 @@ jobs:
 
       - name: Install Android platforms
         run: |
+          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
           sdkmanager --install "platforms;android-36.1" || true
 

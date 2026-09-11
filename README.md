@@ -29,6 +29,10 @@
 
 ## GitHub Actions
 
+ریپو باید **عمومی (Public)** باشد تا دقیقه رایگان Actions فعال شود.
+
+هر push، هر Pull Request و اجرای دستی workflow، APK را می‌سازد.
+
 هر push به `master`، هر Pull Request و اجرای دستی workflow، APK را می‌سازد.
 
 - Artifact در صفحه Actions قابل دانلود است
