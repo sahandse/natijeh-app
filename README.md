@@ -16,6 +16,10 @@
 
 داده‌های زنده از API عمومی وب ورزش ۳ خوانده می‌شود؛ اخبار از RSS ورزش ۳. هیچ کلید Gemini یا سرویس پولی لازم نیست.
 
+## نسخه
+
+نسخه فعلی: **1.1.0** (`versionCode` 2)
+
 ## اجرا
 
 پیش‌نیاز: [Android Studio](https://developer.android.com/studio)
@@ -23,4 +27,13 @@
 1. پروژه را در Android Studio باز کنید
 2. روی امولاتور یا گوشی اجرا کنید
 
-برای امضای انتشار، خط `signingConfig = signingConfigs.getByName("debugConfig")` را از `app/build.gradle.kts` برندارید مگر کلید استور خودتان را تنظیم کرده باشید.
+## GitHub Actions
+
+هر push به `master`، هر Pull Request و اجرای دستی workflow، APK را می‌سازد.
+
+- Artifact در صفحه Actions قابل دانلود است
+- روی `master` یا اجرای دستی (`workflow_dispatch`)، GitHub Release با تگ `v1.1.0` و فایل `natijeh-1.1.0.apk` ساخته/به‌روز می‌شود
+
+برای ساخت دستی از تب Actions → **Android CI** → **Run workflow**.
+
+امضای Play Store اختیاری است: اگر `KEYSTORE_PATH` / `STORE_PASSWORD` / `KEY_PASSWORD` ست نشده باشد، بیلد با کلید دیباگ ساخته می‌شود.
