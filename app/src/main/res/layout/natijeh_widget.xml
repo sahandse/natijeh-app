@@ -3,7 +3,7 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/natijeh_surface"
+    android:background="@color/natijeh_widget_bg"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="12dp">
@@ -33,7 +33,7 @@
             android:ellipsize="end"
             android:gravity="center"
             android:maxLines="2"
-            android:textColor="@color/white"
+            android:textColor="@color/natijeh_widget_text"
             android:textSize="13sp"
             android:textStyle="bold" />
 
@@ -55,7 +55,7 @@
             android:ellipsize="end"
             android:gravity="center"
             android:maxLines="2"
-            android:textColor="@color/white"
+            android:textColor="@color/natijeh_widget_text"
             android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>

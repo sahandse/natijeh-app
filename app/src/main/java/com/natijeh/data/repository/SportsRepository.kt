@@ -16,6 +16,7 @@ import com.natijeh.data.notify.GoalNotifier
 import com.natijeh.data.notify.LiveScoreService
 import com.natijeh.data.remote.Varzesh3Service
 import com.natijeh.data.remote.dto.ApiLiveMatch
+import com.natijeh.data.settings.SettingsStore
 import com.natijeh.data.util.JalaliDate
 import com.natijeh.data.util.MatchAlertFormatter
 import com.natijeh.widget.NatijehScoreWidget
@@ -38,6 +39,7 @@ import java.util.UUID
 class SportsRepository(
     private val dao: SportsDao,
     private val appContext: Context,
+    private val settingsStore: SettingsStore,
     private val api: Varzesh3Service = Varzesh3Service()
 ) {
     private val tag = "SportsRepository"
@@ -65,7 +67,7 @@ class SportsRepository(
     private val fixturesAdapter = moshi.adapter<List<FixtureRound>>(
         Types.newParameterizedType(List::class.java, FixtureRound::class.java)
     )
-    private val notifier = GoalNotifier(appContext)
+    private val notifier = GoalNotifier(appContext, settingsStore)
 
     val allMatches: Flow<List<MatchEntity>> = dao.getAllMatches()
     val liveMatches: Flow<List<MatchEntity>> = dao.getLiveMatches()

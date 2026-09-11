@@ -12,11 +12,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -24,11 +26,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.natijeh.data.notify.GoalNotifier
+import com.natijeh.data.settings.AppSettings
 import com.natijeh.ui.screens.LeagueDetailScreen
 import com.natijeh.ui.screens.MainDashboard
 import com.natijeh.ui.screens.MatchDetailScreen
+import com.natijeh.ui.screens.SettingsScreen
 import com.natijeh.ui.screens.TeamDetailScreen
 import com.natijeh.ui.theme.NatijehTheme
+import com.natijeh.ui.viewmodel.SettingsViewModel
 import com.natijeh.ui.viewmodel.SportsViewModel
 
 class MainActivity : ComponentActivity() {
@@ -37,10 +42,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         requestNotificationPermission()
 
-        val repository = (application as NatijehApp).repository
+        val app = application as NatijehApp
+        val repository = app.repository
 
         setContent {
-            NatijehTheme(darkTheme = true) {
+            val settings by app.settingsStore.settings.collectAsStateWithLifecycle(AppSettings())
+            NatijehTheme(themeMode = settings.themeMode) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
@@ -49,6 +56,9 @@ class MainActivity : ComponentActivity() {
                         val navController = rememberNavController()
                         val sportsViewModel: SportsViewModel = viewModel(
                             factory = SportsViewModel.Factory(repository)
+                        )
+                        val settingsViewModel: SettingsViewModel = viewModel(
+                            factory = SettingsViewModel.Factory(app.settingsStore)
                         )
 
                         LaunchedEffect(intent) {
@@ -65,6 +75,7 @@ class MainActivity : ComponentActivity() {
                             composable("dashboard") {
                                 MainDashboard(
                                     sportsViewModel = sportsViewModel,
+                                    openLiveTab = settings.openLiveTab,
                                     onNavigateToMatch = { matchId ->
                                         navController.navigate("match_detail/$matchId")
                                     },
@@ -73,7 +84,16 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToLeague = { leagueId ->
                                         navController.navigate("league_detail/$leagueId")
+                                    },
+                                    onNavigateToSettings = {
+                                        navController.navigate("settings")
                                     }
+                                )
+                            }
+                            composable("settings") {
+                                SettingsScreen(
+                                    viewModel = settingsViewModel,
+                                    onBack = { navController.popBackStack() }
                                 )
                             }
                             composable(
@@ -84,6 +104,7 @@ class MainActivity : ComponentActivity() {
                                 MatchDetailScreen(
                                     matchId = matchId,
                                     sportsViewModel = sportsViewModel,
+                                    keepScreenOnLive = settings.keepScreenOnLive,
                                     onBack = { navController.popBackStack() },
                                     onNavigateToTeam = { teamId ->
                                         navController.navigate("team_detail/$teamId")

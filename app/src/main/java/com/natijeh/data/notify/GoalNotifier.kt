@@ -11,8 +11,13 @@ import androidx.core.app.NotificationManagerCompat
 import com.natijeh.MainActivity
 import com.natijeh.R
 import com.natijeh.data.model.MatchAlert
+import com.natijeh.data.settings.SettingsStore
+import kotlinx.coroutines.flow.first
 
-class GoalNotifier(private val context: Context) {
+class GoalNotifier(
+    private val context: Context,
+    private val settingsStore: SettingsStore? = null
+) {
     fun ensureChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
@@ -24,8 +29,9 @@ class GoalNotifier(private val context: Context) {
         )
     }
 
-    fun notify(alerts: List<MatchAlert>) {
+    suspend fun notify(alerts: List<MatchAlert>) {
         if (alerts.isEmpty()) return
+        if (settingsStore != null && !settingsStore.settings.first().goalNotifications) return
         ensureChannels()
         val manager = NotificationManagerCompat.from(context)
         alerts.forEach { alert ->

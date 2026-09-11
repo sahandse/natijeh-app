@@ -39,7 +39,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest --tests com.natijeh.data.mapper.SportsMapperTest --tests com.natijeh.ExampleUnitTest --tests com.natijeh.data.util.JalaliDateTest --tests com.natijeh.data.util.MatchAlertFormatterTest
+        run: ./gradlew :app:testDebugUnitTest --tests com.natijeh.data.mapper.SportsMapperTest --tests com.natijeh.ExampleUnitTest --tests com.natijeh.data.util.JalaliDateTest --tests com.natijeh.data.util.MatchAlertFormatterTest --tests com.natijeh.data.settings.ThemeModeTest
 
       - name: Assemble release APK
         run: ./gradlew assembleRelease

@@ -59,6 +59,7 @@ import com.natijeh.data.model.MatchEvent
 import com.natijeh.data.model.MatchLineups
 import com.natijeh.data.model.StatItem
 import com.natijeh.data.util.JalaliDate
+import com.natijeh.ui.theme.LiveRed
 import com.natijeh.ui.viewmodel.SportsViewModel
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -79,6 +80,7 @@ private val h2hAdapter = moshi.adapter(HeadToHeadData::class.java)
 fun MatchDetailScreen(
     matchId: String,
     sportsViewModel: SportsViewModel,
+    keepScreenOnLive: Boolean = true,
     onBack: () -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit
@@ -90,24 +92,28 @@ fun MatchDetailScreen(
     LaunchedEffect(matchId) {
         sportsViewModel.loadMatchDetails(matchId)
     }
-    DisposableEffect(match?.status) {
-        view.keepScreenOn = match?.status == "LIVE"
+    DisposableEffect(match?.status, keepScreenOnLive) {
+        view.keepScreenOn = keepScreenOnLive && match?.status == "LIVE"
         onDispose { view.keepScreenOn = false }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("جزئیات مسابقه", fontWeight = FontWeight.Bold, color = Color.White) },
+                title = { Text("جزئیات مسابقه", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت", tint = Color.White)
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0B0E14))
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
         },
-        containerColor = Color(0xFF0B0E14)
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         match?.let { m ->
             Column(
@@ -129,21 +135,21 @@ fun MatchDetailScreen(
                         "h2h" -> 3
                         else -> 0
                     },
-                    containerColor = Color(0xFF0B0E14),
-                    contentColor = Color(0xFF18C964),
+                    containerColor = MaterialTheme.colorScheme.background,
+                    contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = 16.dp
                 ) {
                     Tab(selected = selectedTab == "timeline", onClick = { selectedTab = "timeline" }) {
-                        Text("رویدادها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "timeline") Color(0xFF18C964) else Color(0xFF64748B), style = MaterialTheme.typography.labelLarge)
+                        Text("رویدادها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "timeline") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
                     }
                     Tab(selected = selectedTab == "stats", onClick = { selectedTab = "stats" }) {
-                        Text("آمار بازی", modifier = Modifier.padding(16.dp), color = if (selectedTab == "stats") Color(0xFF18C964) else Color(0xFF64748B), style = MaterialTheme.typography.labelLarge)
+                        Text("آمار بازی", modifier = Modifier.padding(16.dp), color = if (selectedTab == "stats") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
                     }
                     Tab(selected = selectedTab == "lineups", onClick = { selectedTab = "lineups" }) {
-                        Text("ترکیب‌ها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "lineups") Color(0xFF18C964) else Color(0xFF64748B), style = MaterialTheme.typography.labelLarge)
+                        Text("ترکیب‌ها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "lineups") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
                     }
                     Tab(selected = selectedTab == "h2h", onClick = { selectedTab = "h2h" }) {
-                        Text("رویارویی‌ها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "h2h") Color(0xFF18C964) else Color(0xFF64748B), style = MaterialTheme.typography.labelLarge)
+                        Text("رویارویی‌ها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "h2h") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
                     }
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
@@ -171,7 +177,7 @@ fun MatchDetailScreen(
             }
         } ?: run {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFF18C964))
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -184,72 +190,100 @@ fun MatchHeaderCard(
     onAwayTeamClick: () -> Unit = {},
     onLeagueClick: () -> Unit = {}
 ) {
+    val live = match.status == "LIVE"
     Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth().padding(16.dp)
     ) {
-        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = match.leagueName,
-                color = Color(0xFF94A3B8),
-                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.clickable(enabled = match.leagueId.isNotBlank()) { onLeagueClick() }
             )
             if (match.lastUpdatedMillis > 0) {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = JalaliDate.relative(match.lastUpdatedMillis),
-                    color = Color(0xFF18C964),
+                    color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelSmall
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Spacer(modifier = Modifier.height(18.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f).clickable { onHomeTeamClick() }
                 ) {
-                    AsyncImage(model = match.homeTeamLogo, contentDescription = match.homeTeamName, modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = match.homeTeamName, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(text = if (match.status == "SCHEDULED") "-" else match.homeScore.toString(), color = Color.White, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
-                        Text(text = ":", color = Color(0xFF64748B), style = MaterialTheme.typography.displayMedium)
-                        Text(text = if (match.status == "SCHEDULED") "-" else match.awayScore.toString(), color = Color.White, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(64.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            AsyncImage(model = match.homeTeamLogo, contentDescription = match.homeTeamName, modifier = Modifier.size(40.dp))
+                        }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Surface(shape = RoundedCornerShape(8.dp), color = if (match.status == "LIVE") Color(0xFFEF4444) else Color(0xFF21262D)) {
+                    Text(text = match.homeTeamName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (live) LiveRed.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            val scoreColor = if (live) LiveRed else MaterialTheme.colorScheme.onSurface
+                            Text(text = if (match.status == "SCHEDULED") "–" else match.homeScore.toString(), color = scoreColor, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                            Text(text = ":", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.displaySmall)
+                            Text(text = if (match.status == "SCHEDULED") "–" else match.awayScore.toString(), color = scoreColor, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = if (live) LiveRed else MaterialTheme.colorScheme.surfaceVariant
+                    ) {
                         val statusText = when (match.status) {
                             "LIVE" -> "زنده ${match.liveTime.ifBlank { "${match.minute}'" }}"
                             "FINISHED" -> match.statusTitle.ifBlank { "پایان" }
                             else -> match.time
                         }
-                        Text(text = statusText, color = Color.White, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), fontWeight = FontWeight.Bold)
+                        Text(
+                            text = statusText,
+                            color = if (live) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f).clickable { onAwayTeamClick() }
                 ) {
-                    AsyncImage(model = match.awayTeamLogo, contentDescription = match.awayTeamName, modifier = Modifier.size(48.dp))
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(64.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            AsyncImage(model = match.awayTeamLogo, contentDescription = match.awayTeamName, modifier = Modifier.size(40.dp))
+                        }
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = match.awayTeamName, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(text = match.awayTeamName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), thickness = 0.6.dp)
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("داور", color = Color(0xFF64748B), style = MaterialTheme.typography.labelSmall)
-                    Text(match.referee.ifBlank { "—" }, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    Text("داور", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    Text(match.referee.ifBlank { "—" }, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("ورزشگاه", color = Color(0xFF64748B), style = MaterialTheme.typography.labelSmall)
-                    Text(match.venue.ifBlank { "—" }, color = Color.White, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                    Text("ورزشگاه", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    Text(match.venue.ifBlank { "—" }, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                 }
             }
         }
@@ -263,15 +297,15 @@ fun TimelineTab(events: List<MatchEvent>) {
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             items(events.reversed()) { event ->
-                val cardColor = if (event.isHome) Color(0xFF161B22) else Color(0xFF21262D)
+                val cardColor = if (event.isHome) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
                 Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = cardColor), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                             Box(
-                                modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF0B0E14)),
+                                modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.background),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("${event.minute}'", color = Color(0xFF18C964), fontWeight = FontWeight.Bold)
+                                Text("${event.minute}'", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                             Column {
                                 val typeLabel = when (event.type) {
@@ -283,16 +317,16 @@ fun TimelineTab(events: List<MatchEvent>) {
                                     "SUBSTITUTION" -> "تعویض"
                                     else -> "رویداد"
                                 }
-                                Text(typeLabel, color = Color(0xFF18C964), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                                Text(event.playerName, color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                                Text(typeLabel, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                                Text(event.playerName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
                                 if (event.detail.isNotBlank()) {
-                                    Text(event.detail, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
+                                    Text(event.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
                         Text(
                             text = if (event.isHome) "میزبان" else "میهمان",
-                            color = if (event.isHome) Color(0xFF38BDF8) else Color(0xFFFBBF24),
+                            color = if (event.isHome) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -311,10 +345,10 @@ fun StatsTab(stats: List<StatItem>) {
     }
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = Color(0xFF18C964), modifier = Modifier.size(20.dp))
-                    Text("آمار زنده مسابقه از منبع رسمی فارسی.", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
+                    Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Text("آمار زنده مسابقه از منبع رسمی فارسی.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -328,16 +362,16 @@ fun StatsTab(stats: List<StatItem>) {
 fun StatRow(title: String, homeValue: String, awayValue: String, homePercent: Int, awayPercent: Int) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(homeValue.ifBlank { "0" }, color = Color.White, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-            Text(title, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
-            Text(awayValue.ifBlank { "0" }, color = Color.White, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Text(homeValue.ifBlank { "0" }, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Text(awayValue.ifBlank { "0" }, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Row(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(Color(0xFF21262D))) {
+        Row(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
             val homeRatio = homePercent.coerceAtLeast(1).toFloat()
             val awayRatio = awayPercent.coerceAtLeast(1).toFloat()
-            Box(modifier = Modifier.fillMaxHeight().weight(homeRatio).background(Color(0xFF18C964)))
-            Box(modifier = Modifier.fillMaxHeight().weight(awayRatio).background(Color(0xFFFBBF24)))
+            Box(modifier = Modifier.fillMaxHeight().weight(homeRatio).background(MaterialTheme.colorScheme.primary))
+            Box(modifier = Modifier.fillMaxHeight().weight(awayRatio).background(MaterialTheme.colorScheme.tertiary))
         }
     }
 }
@@ -346,17 +380,17 @@ fun StatRow(title: String, homeValue: String, awayValue: String, homePercent: In
 fun LineupsTab(lineups: MatchLineups) {
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), shape = RoundedCornerShape(12.dp)) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(12.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("سیستم بازی (مربی)", color = Color(0xFF18C964), style = MaterialTheme.typography.labelSmall)
+                    Text("سیستم بازی (مربی)", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${lineups.homeFormation} (${lineups.homeCoach.ifBlank { "—" }})", color = Color.White, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text("${lineups.awayFormation} (${lineups.awayCoach.ifBlank { "—" }})", color = Color.White, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text("${lineups.homeFormation} (${lineups.homeCoach.ifBlank { "—" }})", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text("${lineups.awayFormation} (${lineups.awayCoach.ifBlank { "—" }})", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
-        item { Text("بازیکنان اصلی", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+        item { Text("بازیکنان اصلی", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         val maxStart = maxOf(lineups.homeStarting.size, lineups.awayStarting.size)
         items(maxStart) { index ->
             val homeP = lineups.homeStarting.getOrNull(index)
@@ -364,18 +398,18 @@ fun LineupsTab(lineups: MatchLineups) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     homeP?.let { p ->
-                        Surface(shape = CircleShape, color = Color(0xFF18C964).copy(alpha = 0.2f), modifier = Modifier.size(24.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = Color(0xFF18C964), style = MaterialTheme.typography.labelSmall) }
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), modifier = Modifier.size(24.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall) }
                         }
-                        Text(p.name, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                        Text(p.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                     awayP?.let { p ->
-                        Text(p.name, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                        Text(p.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Surface(shape = CircleShape, color = Color(0xFFFBBF24).copy(alpha = 0.2f), modifier = Modifier.size(24.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = Color(0xFFFBBF24), style = MaterialTheme.typography.labelSmall) }
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f), modifier = Modifier.size(24.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall) }
                         }
                     }
                 }
@@ -384,9 +418,9 @@ fun LineupsTab(lineups: MatchLineups) {
         if (lineups.homeBench.isNotEmpty() || lineups.awayBench.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("بازیکنان ذخیره", color = Color(0xFF64748B), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text("بازیکنان ذخیره", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             }
             val maxBench = maxOf(lineups.homeBench.size, lineups.awayBench.size)
             items(maxBench) { index ->
@@ -395,18 +429,18 @@ fun LineupsTab(lineups: MatchLineups) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         homeBench?.let { p ->
-                            Surface(shape = CircleShape, color = Color(0xFF18C964).copy(alpha = 0.1f), modifier = Modifier.size(22.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = Color(0xFF18C964).copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall) }
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), modifier = Modifier.size(22.dp)) {
+                                Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall) }
                             }
-                            Text(p.name, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
+                            Text(p.name, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                         awayBench?.let { p ->
-                            Text(p.name, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
+                            Text(p.name, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Surface(shape = CircleShape, color = Color(0xFFFBBF24).copy(alpha = 0.1f), modifier = Modifier.size(22.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = Color(0xFFFBBF24).copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall) }
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f), modifier = Modifier.size(22.dp)) {
+                                Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall) }
                             }
                         }
                     }
@@ -420,41 +454,41 @@ fun LineupsTab(lineups: MatchLineups) {
 fun H2HTab(h2h: HeadToHeadData, homeTeam: String, awayTeam: String) {
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("رویارویی‌های اخیر", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("رویارویی‌های اخیر", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("${h2h.homeWins}", color = Color(0xFF38BDF8), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                            Text(homeTeam, color = Color(0xFF94A3B8), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Text("${h2h.homeWins}", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                            Text(homeTeam, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("${h2h.draws}", color = Color(0xFFFBBF24), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                            Text("تساوی", color = Color(0xFF94A3B8), style = MaterialTheme.typography.labelSmall)
+                            Text("${h2h.draws}", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                            Text("تساوی", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("${h2h.awayWins}", color = Color(0xFFEF4444), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                            Text(awayTeam, color = Color(0xFF94A3B8), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Text("${h2h.awayWins}", color = LiveRed, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                            Text(awayTeam, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                     }
                 }
             }
         }
         if (h2h.pastMatches.isNotEmpty()) {
-            item { Text("بازی‌های قبلی", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            item { Text("بازی‌های قبلی", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
             items(h2h.pastMatches) { match ->
-                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF21262D)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(match.homeTeam, color = Color.White, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(match.homeTeam, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(match.score, color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text(match.date, color = Color(0xFF64748B), style = MaterialTheme.typography.labelSmall)
+                            Text(match.score, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(match.date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         }
                         Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                            Text(match.awayTeam, color = Color.White, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(match.awayTeam, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
                         }
                     }
                 }

@@ -1,18 +1,24 @@
 package com.natijeh.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -22,7 +28,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +47,7 @@ import coil.compose.AsyncImage
 import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.util.MatchAlertFormatter
+import com.natijeh.ui.theme.LiveRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,10 +78,10 @@ fun GroupedMatchList(
             onClick = { onOnlyFavoritesChange(!onlyFavorites) },
             label = { Text("فقط محبوب‌ها", style = MaterialTheme.typography.labelMedium) },
             colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = Color(0xFF18C964),
-                selectedLabelColor = Color(0xFF0B0E14),
-                containerColor = Color(0xFF161B22),
-                labelColor = Color.White
+                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                labelColor = MaterialTheme.colorScheme.onSurface
             ),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.padding(start = 16.dp, bottom = 4.dp)
@@ -109,7 +115,7 @@ fun GroupedMatchList(
                                     }
                                     Text(
                                         text = league.name,
-                                        color = Color(0xFF18C964),
+                                        color = MaterialTheme.colorScheme.primary,
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -118,6 +124,7 @@ fun GroupedMatchList(
                             items(leagueMatches, key = { it.id }) { match ->
                                 MatchCard(
                                     match = match,
+                                    showLeague = false,
                                     onClick = { onMatchClick(match.id) },
                                     onFavoriteToggle = { onFavoriteToggle(match) },
                                     onHomeTeamClick = { onTeamClick(match.homeTeamId) },
@@ -140,123 +147,152 @@ fun MatchCard(
     onFavoriteToggle: () -> Unit,
     onHomeTeamClick: () -> Unit = {},
     onAwayTeamClick: () -> Unit = {},
-    onLeagueClick: () -> Unit = {}
+    onLeagueClick: () -> Unit = {},
+    showLeague: Boolean = true
 ) {
+    val live = match.status == "LIVE"
+    val accent = if (live) LiveRed else MaterialTheme.colorScheme.primary
+    val statusText = when (match.status) {
+        "LIVE" -> match.liveTime.ifBlank { "${match.minute}'" }.ifBlank { "زنده" }
+        "FINISHED" -> match.statusTitle.ifBlank { "پایان" }
+        else -> match.time.ifBlank { match.date }
+    }
+    val homeScore = if (match.status == "SCHEDULED") "–" else match.homeScore.toString()
+    val awayScore = if (match.status == "SCHEDULED") "–" else match.awayScore.toString()
+
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth().clickable { onClick() }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = match.leagueName,
-                    color = Color(0xFF94A3B8),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onLeagueClick() }
-                )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (match.status == "LIVE") Color(0xFFEF4444) else Color(0xFF21262D)
+        Row(modifier = Modifier.height(IntrinsicSize.Min).fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(if (live) LiveRed else MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+            )
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    val statusText = when (match.status) {
-                        "LIVE" -> "زنده ${match.liveTime.ifBlank { "${match.minute}'" }}"
-                        "FINISHED" -> match.statusTitle.ifBlank { "پایان" }
-                        else -> match.time.ifBlank { match.date }
+                    if (showLeague) {
+                        Text(
+                            text = match.leagueName,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f).clickable { onLeagueClick() }
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
-                    Text(
-                        text = statusText,
-                        color = if (match.status == "LIVE") Color.White else Color(0xFF94A3B8),
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontWeight = FontWeight.Bold
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = if (live) LiveRed.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            if (live) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(LiveRed)
+                                )
+                            }
+                            Text(
+                                text = if (live) "زنده $statusText" else statusText,
+                                color = if (live) LiveRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            imageVector = if (match.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "علاقه‌مندی",
+                            tint = if (match.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onHomeTeamClick() },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AsyncImage(model = match.homeTeamLogo, contentDescription = match.homeTeamName, modifier = Modifier.size(28.dp))
-                    Text(
-                        text = match.homeTeamName,
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                    TeamMark(
+                        name = match.homeTeamName,
+                        logo = match.homeTeamLogo,
+                        alignEnd = false,
+                        modifier = Modifier.weight(1f).clickable { onHomeTeamClick() }
                     )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                ) {
-                    val scoreColor = if (match.status == "LIVE") Color(0xFF18C964) else Color.White
-                    Text(text = if (match.status == "SCHEDULED") "-" else match.homeScore.toString(), color = scoreColor, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                    Text(text = ":", color = Color(0xFF475569), style = MaterialTheme.typography.headlineMedium)
-                    Text(text = if (match.status == "SCHEDULED") "-" else match.awayScore.toString(), color = scoreColor, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                }
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onAwayTeamClick() },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
-                ) {
-                    Text(
-                        text = match.awayTeamName,
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.End
-                    )
-                    AsyncImage(model = match.awayTeamLogo, contentDescription = match.awayTeamName, modifier = Modifier.size(28.dp))
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = match.date.ifBlank { match.venue },
-                    color = Color(0xFF64748B),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onFavoriteToggle) {
-                    Icon(
-                        imageVector = if (match.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "علاقه‌مندی",
-                        tint = if (match.isFavorite) Color(0xFF18C964) else Color(0xFF64748B)
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (live) accent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                homeScore,
+                                color = if (live) accent else MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(":", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                            Text(
+                                awayScore,
+                                color = if (live) accent else MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    TeamMark(
+                        name = match.awayTeamName,
+                        logo = match.awayTeamLogo,
+                        alignEnd = true,
+                        modifier = Modifier.weight(1f).clickable { onAwayTeamClick() }
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TeamMark(
+    name: String,
+    logo: String,
+    alignEnd: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        AsyncImage(model = logo, contentDescription = name, modifier = Modifier.size(32.dp))
+        Text(
+            text = name,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
+        )
     }
 }

@@ -33,7 +33,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,10 +68,10 @@ fun TeamDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(team?.name ?: "اطلاعات تیم", fontWeight = FontWeight.Bold, color = Color.White) },
+                title = { Text(team?.name ?: "اطلاعات تیم", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت", tint = Color.White)
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
@@ -81,15 +80,15 @@ fun TeamDetailScreen(
                             Icon(
                                 imageVector = if (t.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = "محبوب",
-                                tint = if (t.isFavorite) Color(0xFF18C964) else Color.White
+                                tint = if (t.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0B0E14))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color(0xFF0B0E14)
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         team?.let { t ->
             val squad = squadAdapter.fromJson(t.squadJson).orEmpty()
@@ -99,60 +98,60 @@ fun TeamDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), shape = RoundedCornerShape(16.dp)) {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             AsyncImage(model = t.logo, contentDescription = t.name, modifier = Modifier.size(72.dp))
-                            Text(t.name, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(t.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             if (t.rankLabel.isNotBlank()) {
-                                Text(t.rankLabel, color = Color(0xFF18C964), style = MaterialTheme.typography.bodyMedium)
+                                Text(t.rankLabel, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
                             }
                             if (t.coach.isNotBlank()) {
-                                Text("مربی: ${t.coach}", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
+                                Text("مربی: ${t.coach}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
                             if (t.stadium.isNotBlank()) {
-                                Text("ورزشگاه: ${t.stadium}", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
+                                Text("ورزشگاه: ${t.stadium}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
                 }
                 if (recent.isNotEmpty()) {
-                    item { Text("بازی‌های اخیر", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                    item { Text("بازی‌های اخیر", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                     items(recent) { match ->
-                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF21262D)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(match.homeTeam, color = Color.White, modifier = Modifier.weight(1f), maxLines = 1)
+                                Text(match.homeTeam, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), maxLines = 1)
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(match.score, color = Color(0xFF18C964), fontWeight = FontWeight.Bold)
-                                    Text(match.date, color = Color(0xFF64748B), style = MaterialTheme.typography.labelSmall)
+                                    Text(match.score, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    Text(match.date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                                 }
-                                Text(match.awayTeam, color = Color.White, modifier = Modifier.weight(1f), maxLines = 1)
+                                Text(match.awayTeam, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), maxLines = 1)
                             }
                         }
                     }
                 }
                 if (squad.isNotEmpty()) {
-                    item { Text("لیست بازیکنان", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                    item { Text("لیست بازیکنان", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                     items(squad) { player ->
-                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (player.portrait.isNotBlank()) {
                                     AsyncImage(model = player.portrait, contentDescription = player.name, modifier = Modifier.size(44.dp))
                                 } else {
-                                    Surface(shape = CircleShape, color = Color(0xFF21262D), modifier = Modifier.size(44.dp)) {
+                                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Text(player.shirtNumber.toString(), color = Color(0xFF18C964), fontWeight = FontWeight.Bold)
+                                            Text(player.shirtNumber.toString(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text(player.name, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                        Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFF18C964).copy(alpha = 0.2f)) {
-                                            Text(player.position, color = Color(0xFF18C964), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+                                        Text(player.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)) {
+                                            Text(player.position, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
                                         }
                                     }
                                     Text(
@@ -163,7 +162,7 @@ fun TeamDetailScreen(
                                                 append("${player.age} سال")
                                             }
                                         },
-                                        color = Color(0xFF94A3B8),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }
@@ -174,7 +173,7 @@ fun TeamDetailScreen(
             }
         } ?: run {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFF18C964))
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
     }

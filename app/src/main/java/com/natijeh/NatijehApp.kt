@@ -10,11 +10,13 @@ import com.natijeh.data.local.AppDatabase
 import com.natijeh.data.notify.GoalNotifier
 import com.natijeh.data.notify.LiveScoreWorker
 import com.natijeh.data.repository.SportsRepository
+import com.natijeh.data.settings.SettingsStore
 import java.util.concurrent.TimeUnit
 
 class NatijehApp : Application() {
     val database: AppDatabase by lazy { AppDatabase.getDatabase(this) }
-    val repository: SportsRepository by lazy { SportsRepository(database.sportsDao(), this) }
+    val settingsStore: SettingsStore by lazy { SettingsStore(this) }
+    val repository: SportsRepository by lazy { SportsRepository(database.sportsDao(), this, settingsStore) }
 
     override fun onCreate() {
         super.onCreate()
