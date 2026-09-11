@@ -39,17 +39,17 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest --tests com.example.data.mapper.SportsMapperTest --tests com.example.ExampleUnitTest
+        run: ./gradlew :app:testDebugUnitTest --tests com.natijeh.data.mapper.SportsMapperTest --tests com.natijeh.ExampleUnitTest --tests com.natijeh.data.util.JalaliDateTest --tests com.natijeh.data.util.MatchAlertFormatterTest
 
-      - name: Assemble debug APK
-        run: ./gradlew assembleDebug
+      - name: Assemble release APK
+        run: ./gradlew assembleRelease
 
       - name: Name APK
         id: apk
         run: |
           VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/natijeh-${VERSION}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/natijeh-${VERSION}.apk"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "file=dist/natijeh-${VERSION}.apk" >> "$GITHUB_OUTPUT"
           ls -lh dist
