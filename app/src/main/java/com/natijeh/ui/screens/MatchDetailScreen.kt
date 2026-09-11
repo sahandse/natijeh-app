@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +61,7 @@ import com.natijeh.data.model.MatchLineups
 import com.natijeh.data.model.StatItem
 import com.natijeh.data.util.JalaliDate
 import com.natijeh.ui.theme.LiveRed
+import com.natijeh.ui.theme.PulseDot
 import com.natijeh.ui.viewmodel.SportsViewModel
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -191,100 +193,95 @@ fun MatchHeaderCard(
     onLeagueClick: () -> Unit = {}
 ) {
     val live = match.status == "LIVE"
-    Card(
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth().padding(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = match.leagueName,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(enabled = match.leagueId.isNotBlank()) { onLeagueClick() }
-            )
-            if (match.lastUpdatedMillis > 0) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = JalaliDate.relative(match.lastUpdatedMillis),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelSmall
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        colors.primary.copy(alpha = 0.16f),
+                        colors.surface,
+                        LiveRed.copy(alpha = 0.10f)
+                    )
                 )
+            )
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = match.leagueName,
+            color = colors.onSurfaceVariant,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.clickable(enabled = match.leagueId.isNotBlank()) { onLeagueClick() }
+        )
+        if (match.lastUpdatedMillis > 0) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = JalaliDate.relative(match.lastUpdatedMillis),
+                color = colors.primary,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f).clickable { onHomeTeamClick() }
+            ) {
+                Surface(shape = CircleShape, color = colors.surface.copy(alpha = 0.7f), modifier = Modifier.size(72.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        AsyncImage(model = match.homeTeamLogo, contentDescription = match.homeTeamName, modifier = Modifier.size(48.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = match.homeTeamName, color = colors.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
             }
-            Spacer(modifier = Modifier.height(18.dp))
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f).clickable { onHomeTeamClick() }
-                ) {
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(64.dp)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            AsyncImage(model = match.homeTeamLogo, contentDescription = match.homeTeamName, modifier = Modifier.size(40.dp))
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = match.homeTeamName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val scoreColor = if (live) LiveRed else colors.onSurface
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(text = if (match.status == "SCHEDULED") "–" else match.homeScore.toString(), color = scoreColor, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+                    Text(text = ":", color = colors.onSurfaceVariant, style = MaterialTheme.typography.displayMedium)
+                    Text(text = if (match.status == "SCHEDULED") "–" else match.awayScore.toString(), color = scoreColor, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (live) LiveRed.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            val scoreColor = if (live) LiveRed else MaterialTheme.colorScheme.onSurface
-                            Text(text = if (match.status == "SCHEDULED") "–" else match.homeScore.toString(), color = scoreColor, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                            Text(text = ":", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.displaySmall)
-                            Text(text = if (match.status == "SCHEDULED") "–" else match.awayScore.toString(), color = scoreColor, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                        }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (live) PulseDot()
+                    val statusText = when (match.status) {
+                        "LIVE" -> "زنده ${match.liveTime.ifBlank { "${match.minute}'" }}"
+                        "FINISHED" -> match.statusTitle.ifBlank { "پایان" }
+                        else -> match.time
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = if (live) LiveRed else MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        val statusText = when (match.status) {
-                            "LIVE" -> "زنده ${match.liveTime.ifBlank { "${match.minute}'" }}"
-                            "FINISHED" -> match.statusTitle.ifBlank { "پایان" }
-                            else -> match.time
-                        }
-                        Text(
-                            text = statusText,
-                            color = if (live) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f).clickable { onAwayTeamClick() }
-                ) {
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(64.dp)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            AsyncImage(model = match.awayTeamLogo, contentDescription = match.awayTeamName, modifier = Modifier.size(40.dp))
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = match.awayTeamName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(
+                        text = statusText,
+                        color = if (live) LiveRed else colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), thickness = 0.6.dp)
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("داور", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                    Text(match.referee.ifBlank { "—" }, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f).clickable { onAwayTeamClick() }
+            ) {
+                Surface(shape = CircleShape, color = colors.surface.copy(alpha = 0.7f), modifier = Modifier.size(72.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        AsyncImage(model = match.awayTeamLogo, contentDescription = match.awayTeamName, modifier = Modifier.size(48.dp))
+                    }
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("ورزشگاه", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                    Text(match.venue.ifBlank { "—" }, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = match.awayTeamName, color = colors.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("داور", color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                Text(match.referee.ifBlank { "—" }, color = colors.onSurface, style = MaterialTheme.typography.bodyMedium)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("ورزشگاه", color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                Text(match.venue.ifBlank { "—" }, color = colors.onSurface, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
             }
         }
     }
@@ -301,12 +298,7 @@ fun TimelineTab(events: List<MatchEvent>) {
                 Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = cardColor), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
-                            Box(
-                                modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.background),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("${event.minute}'", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                            }
+                            EventMark(event)
                             Column {
                                 val typeLabel = when (event.type) {
                                     "GOAL" -> "گل"
@@ -317,7 +309,16 @@ fun TimelineTab(events: List<MatchEvent>) {
                                     "SUBSTITUTION" -> "تعویض"
                                     else -> "رویداد"
                                 }
-                                Text(typeLabel, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                                Text(
+                                    typeLabel,
+                                    color = when (event.type) {
+                                        "CARD_RED" -> LiveRed
+                                        "GOAL", "PENALTY" -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    },
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
                                 Text(event.playerName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
                                 if (event.detail.isNotBlank()) {
                                     Text(event.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
@@ -326,12 +327,59 @@ fun TimelineTab(events: List<MatchEvent>) {
                         }
                         Text(
                             text = if (event.isHome) "میزبان" else "میهمان",
-                            color = if (event.isHome) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventMark(event: MatchEvent) {
+    val minute = "${event.minute}'"
+    when (event.type) {
+        "GOAL", "PENALTY" -> {
+            Box(
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(minute, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        "CARD_RED" -> {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .width(14.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(LiveRed)
+                )
+                Text(minute, color = LiveRed, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+        "CARD_YELLOW" -> {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .width(14.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFFF5C518))
+                )
+                Text(minute, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+        else -> {
+            Box(
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(minute, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -367,11 +415,11 @@ fun StatRow(title: String, homeValue: String, awayValue: String, homePercent: In
             Text(awayValue.ifBlank { "0" }, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Row(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+        Row(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
             val homeRatio = homePercent.coerceAtLeast(1).toFloat()
             val awayRatio = awayPercent.coerceAtLeast(1).toFloat()
             Box(modifier = Modifier.fillMaxHeight().weight(homeRatio).background(MaterialTheme.colorScheme.primary))
-            Box(modifier = Modifier.fillMaxHeight().weight(awayRatio).background(MaterialTheme.colorScheme.tertiary))
+            Box(modifier = Modifier.fillMaxHeight().weight(awayRatio).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)))
         }
     }
 }
@@ -408,8 +456,8 @@ fun LineupsTab(lineups: MatchLineups) {
                     awayP?.let { p ->
                         Text(p.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f), modifier = Modifier.size(24.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall) }
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), modifier = Modifier.size(24.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall) }
                         }
                     }
                 }
@@ -439,8 +487,8 @@ fun LineupsTab(lineups: MatchLineups) {
                         awayBench?.let { p ->
                             Text(p.name, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f), modifier = Modifier.size(22.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall) }
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), modifier = Modifier.size(22.dp)) {
+                                Box(contentAlignment = Alignment.Center) { Text(p.number.toString(), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall) }
                             }
                         }
                     }
@@ -460,15 +508,15 @@ fun H2HTab(h2h: HeadToHeadData, homeTeam: String, awayTeam: String) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("${h2h.homeWins}", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                            Text("${h2h.homeWins}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                             Text(homeTeam, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("${h2h.draws}", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                            Text("${h2h.draws}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                             Text("تساوی", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("${h2h.awayWins}", color = LiveRed, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                            Text("${h2h.awayWins}", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                             Text(awayTeam, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                     }

@@ -1,7 +1,9 @@
 package com.natijeh.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,26 +14,23 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -48,6 +47,8 @@ import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.util.MatchAlertFormatter
 import com.natijeh.ui.theme.LiveRed
+import com.natijeh.ui.theme.PulseDot
+import com.natijeh.ui.theme.natijehCardElevation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,6 +141,7 @@ fun GroupedMatchList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MatchCard(
     match: MatchEntity,
@@ -151,7 +153,6 @@ fun MatchCard(
     showLeague: Boolean = true
 ) {
     val live = match.status == "LIVE"
-    val accent = if (live) LiveRed else MaterialTheme.colorScheme.primary
     val statusText = when (match.status) {
         "LIVE" -> match.liveTime.ifBlank { "${match.minute}'" }.ifBlank { "زنده" }
         "FINISHED" -> match.statusTitle.ifBlank { "پایان" }
@@ -159,25 +160,29 @@ fun MatchCard(
     }
     val homeScore = if (match.status == "SCHEDULED") "–" else match.homeScore.toString()
     val awayScore = if (match.status == "SCHEDULED") "–" else match.awayScore.toString()
+    val scoreColor = if (live) LiveRed else MaterialTheme.colorScheme.onSurface
 
     Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (live) LiveRed.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
+        ),
+        elevation = natijehCardElevation(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onFavoriteToggle)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min).fillMaxWidth()) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(if (live) LiveRed else MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
-            )
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+            if (live) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(LiveRed)
+                )
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
                     if (showLeague) {
                         Text(
                             text = match.leagueName,
@@ -185,86 +190,76 @@ fun MatchCard(
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f).clickable { onLeagueClick() }
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onLeagueClick() }
+                                .padding(bottom = 10.dp)
                         )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
                     }
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = if (live) LiveRed.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        TeamMark(
+                            name = match.homeTeamName,
+                            logo = match.homeTeamLogo,
+                            alignEnd = false,
+                            modifier = Modifier.weight(1f).clickable { onHomeTeamClick() }
+                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 8.dp)
                         ) {
-                            if (live) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .clip(CircleShape)
-                                        .background(LiveRed)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    homeScore,
+                                    color = scoreColor,
+                                    style = MaterialTheme.typography.displaySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(":", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                                Text(
+                                    awayScore,
+                                    color = scoreColor,
+                                    style = MaterialTheme.typography.displaySmall,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
-                            Text(
-                                text = if (live) "زنده $statusText" else statusText,
-                                color = if (live) LiveRed else MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                if (live) PulseDot()
+                                Text(
+                                    text = if (live) "زنده $statusText" else statusText,
+                                    color = if (live) LiveRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
-                    }
-                    IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            imageVector = if (match.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "علاقه‌مندی",
-                            tint = if (match.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                        TeamMark(
+                            name = match.awayTeamName,
+                            logo = match.awayTeamLogo,
+                            alignEnd = true,
+                            modifier = Modifier.weight(1f).clickable { onAwayTeamClick() }
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TeamMark(
-                        name = match.homeTeamName,
-                        logo = match.homeTeamLogo,
-                        alignEnd = false,
-                        modifier = Modifier.weight(1f).clickable { onHomeTeamClick() }
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (live) accent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                homeScore,
-                                color = if (live) accent else MaterialTheme.colorScheme.onSurface,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(":", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                            Text(
-                                awayScore,
-                                color = if (live) accent else MaterialTheme.colorScheme.onSurface,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                    TeamMark(
-                        name = match.awayTeamName,
-                        logo = match.awayTeamLogo,
-                        alignEnd = true,
-                        modifier = Modifier.weight(1f).clickable { onAwayTeamClick() }
+                if (match.isFavorite) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "محبوب",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(14.dp)
                     )
                 }
             }
@@ -282,15 +277,23 @@ private fun TeamMark(
     Column(
         modifier = modifier,
         horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        AsyncImage(model = logo, contentDescription = name, modifier = Modifier.size(32.dp))
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(model = logo, contentDescription = name, modifier = Modifier.size(36.dp))
+        }
         Text(
             text = name,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
         )

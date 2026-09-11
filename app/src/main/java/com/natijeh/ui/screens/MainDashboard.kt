@@ -23,19 +23,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -69,6 +72,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -80,6 +85,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.natijeh.R
+import com.natijeh.ui.theme.LiveRed
+import com.natijeh.ui.theme.PulseDot
+import com.natijeh.ui.theme.natijehCardElevation
 import com.natijeh.ui.viewmodel.SportsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,6 +101,7 @@ fun MainDashboard(
     onNavigateToSettings: () -> Unit = {}
 ) {
     var activeTab by remember { mutableStateOf("today") }
+    var moreSection by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var showSearch by remember { mutableStateOf(false) }
     val isRefreshing by sportsViewModel.isRefreshing.collectAsStateWithLifecycle()
@@ -135,30 +144,10 @@ fun MainDashboard(
                                 color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.titleLarge
                             )
-                            Text(
-                                text = "لایواسکور زنده",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelSmall
-                            )
                         }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { sportsViewModel.refresh() }) {
-                        if (isRefreshing) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "به‌روزرسانی زنده",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
                     IconButton(onClick = { showSearch = !showSearch }) {
                         Icon(
                             imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
@@ -184,7 +173,7 @@ fun MainDashboard(
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
+                tonalElevation = 0.dp,
                 windowInsets = WindowInsets.navigationBars
             ) {
                 val itemColors = NavigationBarItemDefaults.colors(
@@ -192,47 +181,34 @@ fun MainDashboard(
                     selectedTextColor = MaterialTheme.colorScheme.primary,
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                    indicatorColor = Color.Transparent
                 )
                 NavigationBarItem(
                     selected = activeTab == "today",
                     onClick = { activeTab = "today"; showSearch = false },
-                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = "بازی‌ها") },
-                    label = { Text("بازی‌ها", style = MaterialTheme.typography.labelSmall) },
+                    icon = { SlimTabIcon(Icons.Default.Home, activeTab == "today") },
+                    label = { Text("امروز", style = MaterialTheme.typography.labelSmall) },
                     colors = itemColors,
                     modifier = Modifier.testTag("today_tab")
                 )
                 NavigationBarItem(
                     selected = activeTab == "live",
                     onClick = { activeTab = "live"; showSearch = false },
-                    icon = { Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "زنده") },
+                    icon = { SlimTabIcon(Icons.Default.PlayArrow, activeTab == "live") },
                     label = { Text("زنده", style = MaterialTheme.typography.labelSmall) },
                     colors = itemColors,
                     modifier = Modifier.testTag("live_tab")
                 )
                 NavigationBarItem(
-                    selected = activeTab == "leagues",
-                    onClick = { activeTab = "leagues"; showSearch = false },
-                    icon = { Icon(imageVector = Icons.Default.Star, contentDescription = "لیگ‌ها") },
-                    label = { Text("لیگ‌ها", style = MaterialTheme.typography.labelSmall) },
+                    selected = activeTab == "more",
+                    onClick = {
+                        if (activeTab == "more") moreSection = null else activeTab = "more"
+                        showSearch = false
+                    },
+                    icon = { SlimTabIcon(Icons.Default.MoreHoriz, activeTab == "more") },
+                    label = { Text("بیشتر", style = MaterialTheme.typography.labelSmall) },
                     colors = itemColors,
-                    modifier = Modifier.testTag("leagues_tab")
-                )
-                NavigationBarItem(
-                    selected = activeTab == "news",
-                    onClick = { activeTab = "news"; showSearch = false },
-                    icon = { Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "اخبار") },
-                    label = { Text("اخبار", style = MaterialTheme.typography.labelSmall) },
-                    colors = itemColors,
-                    modifier = Modifier.testTag("news_tab")
-                )
-                NavigationBarItem(
-                    selected = activeTab == "favorites",
-                    onClick = { activeTab = "favorites"; showSearch = false },
-                    icon = { Icon(imageVector = Icons.Default.Favorite, contentDescription = "محبوب") },
-                    label = { Text("محبوب", style = MaterialTheme.typography.labelSmall) },
-                    colors = itemColors,
-                    modifier = Modifier.testTag("favorites_tab")
+                    modifier = Modifier.testTag("more_tab")
                 )
             }
         },
@@ -246,7 +222,7 @@ fun MainDashboard(
             if (!errorMessage.isNullOrBlank()) {
                 Text(
                     text = errorMessage.orEmpty(),
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = LiveRed,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
@@ -296,9 +272,14 @@ fun MainDashboard(
                 when (activeTab) {
                     "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing)
                     "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing)
-                    "leagues" -> LeaguesTabContent(sportsViewModel, onNavigateToLeague)
-                    "news" -> NewsTabContent(sportsViewModel)
-                    "favorites" -> FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague)
+                    else -> MoreTabContent(
+                        moreSection = moreSection,
+                        onSelectSection = { moreSection = it },
+                        sportsViewModel = sportsViewModel,
+                        onNavigateToMatch = onNavigateToMatch,
+                        onNavigateToTeam = onNavigateToTeam,
+                        onNavigateToLeague = onNavigateToLeague
+                    )
                 }
             }
         }
@@ -373,20 +354,40 @@ fun LiveTabContent(
     val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
     val favoriteLeagues by viewModel.favoriteLeagues.collectAsStateWithLifecycle()
     var onlyFavorites by remember { mutableStateOf(false) }
-    GroupedMatchList(
-        matches = liveMatches,
-        isRefreshing = isRefreshing,
-        emptyMessage = if (onlyFavorites) "بازی زنده‌ای از علاقه‌مندی‌ها در جریان نیست." else "در حال حاضر هیچ مسابقه‌ای به صورت زنده برگزار نمی‌شود.",
-        onlyFavorites = onlyFavorites,
-        favoriteTeamIds = favoriteTeams.map { it.id }.toSet(),
-        favoriteLeagueIds = favoriteLeagues.map { it.id }.toSet(),
-        onRefresh = { viewModel.refresh() },
-        onMatchClick = onNavigateToMatch,
-        onTeamClick = onNavigateToTeam,
-        onLeagueClick = onNavigateToLeague,
-        onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
-        onOnlyFavoritesChange = { onlyFavorites = it }
-    )
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (liveMatches.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(LiveRed.copy(alpha = 0.1f))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PulseDot()
+                Text(
+                    text = "${liveMatches.size} بازی زنده",
+                    color = LiveRed,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        GroupedMatchList(
+            matches = liveMatches,
+            isRefreshing = isRefreshing,
+            emptyMessage = if (onlyFavorites) "بازی زنده‌ای از علاقه‌مندی‌ها در جریان نیست." else "در حال حاضر هیچ مسابقه‌ای به صورت زنده برگزار نمی‌شود.",
+            onlyFavorites = onlyFavorites,
+            favoriteTeamIds = favoriteTeams.map { it.id }.toSet(),
+            favoriteLeagueIds = favoriteLeagues.map { it.id }.toSet(),
+            onRefresh = { viewModel.refresh() },
+            onMatchClick = onNavigateToMatch,
+            onTeamClick = onNavigateToTeam,
+            onLeagueClick = onNavigateToLeague,
+            onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
+            onOnlyFavoritesChange = { onlyFavorites = it }
+        )
+    }
 }
 
 @Composable
@@ -405,6 +406,7 @@ fun LeaguesTabContent(viewModel: SportsViewModel, onNavigateToLeague: (String) -
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = natijehCardElevation(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onNavigateToLeague(league.id) }
@@ -734,6 +736,120 @@ fun SearchResultsContent(
         }
         if (filteredMatches.isEmpty() && filteredLeagues.isEmpty() && filteredTeams.isEmpty()) {
             item { EmptyState(message = "موردی با جستجوی شما یافت نشد.") }
+        }
+    }
+}
+
+@Composable
+private fun SlimTabIcon(icon: ImageVector, selected: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(imageVector = icon, contentDescription = null)
+        Box(
+            modifier = Modifier
+                .width(16.dp)
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+        )
+    }
+}
+
+@Composable
+private fun MoreTabContent(
+    moreSection: String?,
+    onSelectSection: (String?) -> Unit,
+    sportsViewModel: SportsViewModel,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit
+) {
+    when (moreSection) {
+        "leagues" -> MoreSectionScaffold("لیگ‌ها", onBack = { onSelectSection(null) }) {
+            LeaguesTabContent(sportsViewModel, onNavigateToLeague)
+        }
+        "news" -> MoreSectionScaffold("اخبار", onBack = { onSelectSection(null) }) {
+            NewsTabContent(sportsViewModel)
+        }
+        "favorites" -> MoreSectionScaffold("علاقه‌مندی‌ها", onBack = { onSelectSection(null) }) {
+            FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague)
+        }
+        else -> MoreHub(onSelectSection)
+    }
+}
+
+@Composable
+private fun MoreSectionScaffold(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت")
+            }
+            Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+        }
+        Box(modifier = Modifier.weight(1f)) { content() }
+    }
+}
+
+@Composable
+private fun MoreHub(onSelect: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        MoreTile(
+            title = "لیگ‌ها",
+            subtitle = "جدول، گلزنان و برنامه هفته",
+            icon = Icons.Default.Star,
+            onClick = { onSelect("leagues") }
+        )
+        MoreTile(
+            title = "اخبار",
+            subtitle = "فوتبال داخلی و خارجی از ورزش ۳",
+            icon = Icons.AutoMirrored.Filled.List,
+            onClick = { onSelect("news") }
+        )
+        MoreTile(
+            title = "علاقه‌مندی‌ها",
+            subtitle = "تیم‌ها، لیگ‌ها و بازی‌های محبوب",
+            icon = Icons.Default.Favorite,
+            onClick = { onSelect("favorites") }
+        )
+    }
+}
+
+@Composable
+private fun MoreTile(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = natijehCardElevation(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

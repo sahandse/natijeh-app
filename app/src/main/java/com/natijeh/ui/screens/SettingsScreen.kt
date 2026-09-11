@@ -205,7 +205,7 @@ private fun ThemePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
             title = "سفید",
             selected = selected == ThemeMode.LIGHT,
             icon = Icons.Outlined.LightMode,
-            canvas = Color(0xFFF3F6F4),
+            canvas = Color(0xFFF7F4EE),
             card = Color.White,
             accent = Color(0xFF128A3E),
             onClick = { onSelect(ThemeMode.LIGHT) }
@@ -253,7 +253,7 @@ private fun ThemePreviewCard(
                 .height(72.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(
-                    if (split) Brush.horizontalGradient(listOf(Color(0xFF07090C), Color(0xFFF3F6F4)))
+                    if (split) Brush.horizontalGradient(listOf(Color(0xFF07090C), Color(0xFFF7F4EE)))
                     else Brush.linearGradient(listOf(canvas, canvas))
                 )
         ) {

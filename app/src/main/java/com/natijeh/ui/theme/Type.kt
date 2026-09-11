@@ -21,21 +21,32 @@ val Typography = Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp,
         lineHeight = 40.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     displayMedium = TextStyle(
         fontFamily = Vazirmatn,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     displaySmall = TextStyle(
         fontFamily = Vazirmatn,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = Vazirmatn,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     titleLarge = TextStyle(
         fontFamily = Vazirmatn,

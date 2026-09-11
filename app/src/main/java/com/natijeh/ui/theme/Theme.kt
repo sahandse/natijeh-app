@@ -25,7 +25,8 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = DarkSurfaceAlt,
     onSurfaceVariant = DarkMuted,
     outline = Color(0xFF2A323C),
-    error = LiveRed
+    error = LiveRed,
+    secondaryContainer = Color(0xFF1B2129)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -40,8 +41,9 @@ private val LightColorScheme = lightColorScheme(
     onSurface = LightOnSurface,
     surfaceVariant = LightSurfaceAlt,
     onSurfaceVariant = LightMuted,
-    outline = Color(0xFFD4DDD7),
-    error = LiveRed
+    outline = Color(0xFFE4DDD2),
+    error = LiveRed,
+    secondaryContainer = Color(0xFFF1ECE4)
 )
 
 @Composable

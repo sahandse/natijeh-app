@@ -1,11 +1,14 @@
 package com.natijeh.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,6 +56,9 @@ import com.natijeh.data.model.FixtureRound
 import com.natijeh.data.model.ScorerRow
 import com.natijeh.data.model.StandingRow
 import com.natijeh.ui.theme.LiveRed
+import com.natijeh.ui.theme.RankGold
+import com.natijeh.ui.theme.RankSilver
+import com.natijeh.ui.theme.natijehCardElevation
 import com.natijeh.ui.viewmodel.SportsViewModel
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -116,6 +124,7 @@ fun LeagueDetailScreen(
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = natijehCardElevation(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -193,31 +202,53 @@ private fun StandingsTab(standings: List<StandingRow>, onNavigateToTeam: (String
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(standings, key = { it.teamId }) { row ->
+                val rankBar = when (row.rank) {
+                    1 -> MaterialTheme.colorScheme.primary
+                    2 -> RankGold
+                    3 -> RankSilver
+                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0f)
+                }
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = natijehCardElevation(),
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth().clickable { onNavigateToTeam(row.teamId) }
                 ) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val rankColor = when (row.rank) {
-                            1 -> MaterialTheme.colorScheme.primary
-                            2 -> MaterialTheme.colorScheme.secondary
-                            3 -> MaterialTheme.colorScheme.tertiary
-                            4 -> MaterialTheme.colorScheme.secondary
-                            else -> MaterialTheme.colorScheme.onSurface
-                        }
-                        Text(row.rank.toString(), color = rankColor, modifier = Modifier.width(24.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                        AsyncImage(model = row.teamLogo, contentDescription = row.teamName, modifier = Modifier.size(22.dp).padding(end = 6.dp))
-                        Text(row.teamName, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), maxLines = 1, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(row.played.toString(), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                            Text(row.won.toString(), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                            Text(row.drawn.toString(), color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                            Text(row.lost.toString(), color = LiveRed, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                            val gd = row.goalsFor - row.goalsAgainst
-                            val gdPrefix = if (gd > 0) "+$gd" else gd.toString()
-                            Text(gdPrefix, color = if (gd >= 0) MaterialTheme.colorScheme.primary else LiveRed, modifier = Modifier.width(32.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                            Text(row.points.toString(), color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(32.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .fillMaxHeight()
+                                .background(rankBar)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                row.rank.toString(),
+                                color = when (row.rank) {
+                                    1 -> MaterialTheme.colorScheme.primary
+                                    2 -> RankGold
+                                    3 -> RankSilver
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.width(24.dp),
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            AsyncImage(model = row.teamLogo, contentDescription = row.teamName, modifier = Modifier.size(22.dp).padding(end = 6.dp))
+                            Text(row.teamName, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), maxLines = 1, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(row.played.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                                Text(row.won.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                                Text(row.drawn.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                                Text(row.lost.toString(), color = if (row.lost > 0) LiveRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                                val gd = row.goalsFor - row.goalsAgainst
+                                val gdPrefix = if (gd > 0) "+$gd" else gd.toString()
+                                Text(gdPrefix, color = if (gd >= 0) MaterialTheme.colorScheme.primary else LiveRed, modifier = Modifier.width(32.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                                Text(row.points.toString(), color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(36.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -233,27 +264,49 @@ private fun ScorersTab(scorers: List<ScorerRow>, onNavigateToTeam: (String) -> U
         return
     }
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(scorers, key = { it.playerId }) { row ->
+        itemsIndexed(scorers, key = { _, row -> row.playerId }) { index, row ->
+            val rank = index + 1
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(12.dp),
+                elevation = natijehCardElevation(),
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().clickable(enabled = row.teamId.isNotBlank() && row.teamId != "0") {
                     onNavigateToTeam(row.teamId)
                 }
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (row.portrait.isNotBlank()) {
-                        AsyncImage(model = row.portrait, contentDescription = row.name, modifier = Modifier.size(40.dp))
+                    Text(
+                        text = rank.toString(),
+                        color = when (rank) {
+                            1 -> MaterialTheme.colorScheme.primary
+                            2 -> RankGold
+                            3 -> RankSilver
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(36.dp)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (row.portrait.isNotBlank()) {
+                            AsyncImage(model = row.portrait, contentDescription = row.name, modifier = Modifier.size(44.dp).clip(CircleShape))
+                        }
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(row.name, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         Text(row.teamName, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
-                    Text("${row.goals} گل", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text("${row.goals} گل", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
