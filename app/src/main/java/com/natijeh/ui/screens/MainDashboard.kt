@@ -181,7 +181,7 @@ fun MainDashboard(
                     selectedTextColor = MaterialTheme.colorScheme.primary,
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = Color.Transparent
+                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 )
                 NavigationBarItem(
                     selected = activeTab == "today",
@@ -304,7 +304,7 @@ fun TodayTabContent(
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(vertical = 10.dp),
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -320,7 +320,7 @@ fun TodayTabContent(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         labelColor = MaterialTheme.colorScheme.onSurface
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = CircleShape
                 )
             }
         }

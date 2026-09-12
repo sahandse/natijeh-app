@@ -21,18 +21,12 @@ android {
 
   signingConfigs {
     create("release") {
-      val bundled = file("keystore/natijeh-release.jks")
       val envPath = System.getenv("KEYSTORE_PATH")
-      val store = when {
-        !envPath.isNullOrBlank() && file(envPath).exists() -> file(envPath)
-        bundled.exists() -> bundled
-        else -> null
-      }
-      if (store != null) {
-        storeFile = store
-        storePassword = System.getenv("STORE_PASSWORD") ?: "natijeh-sideload"
-        keyAlias = System.getenv("KEY_ALIAS") ?: "natijeh"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: "natijeh-sideload"
+      if (!envPath.isNullOrBlank()) {
+        storeFile = file(envPath)
+        storePassword = System.getenv("STORE_PASSWORD")
+        keyAlias = System.getenv("KEY_ALIAS")
+        keyPassword = System.getenv("KEY_PASSWORD")
       }
     }
   }
@@ -44,11 +38,7 @@ android {
       isShrinkResources = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       val releaseSigning = signingConfigs.getByName("release")
-      signingConfig = if (releaseSigning.storeFile?.exists() == true) {
-        releaseSigning
-      } else {
-        signingConfigs.getByName("debug")
-      }
+      signingConfig = releaseSigning
     }
   }
   compileOptions {

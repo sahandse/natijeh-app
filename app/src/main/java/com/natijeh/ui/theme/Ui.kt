@@ -25,7 +25,7 @@ fun isLightTheme(): Boolean = MaterialTheme.colorScheme.background.luminance() >
 
 @Composable
 fun natijehCardElevation() = CardDefaults.cardElevation(
-    defaultElevation = if (isLightTheme()) 1.5.dp else 0.dp
+    defaultElevation = if (isLightTheme()) 0.5.dp else 0.dp
 )
 
 @Composable

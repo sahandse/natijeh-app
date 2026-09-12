@@ -3,11 +3,14 @@ package com.natijeh.ui.theme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.natijeh.data.settings.ThemeMode
@@ -24,9 +27,10 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = DarkOnSurface,
     surfaceVariant = DarkSurfaceAlt,
     onSurfaceVariant = DarkMuted,
-    outline = Color(0xFF2A323C),
+    outline = Color(0xFF30353D),
+    outlineVariant = Color(0xFF252A31),
     error = LiveRed,
-    secondaryContainer = Color(0xFF1B2129)
+    secondaryContainer = Color(0xFF22262D)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -41,9 +45,18 @@ private val LightColorScheme = lightColorScheme(
     onSurface = LightOnSurface,
     surfaceVariant = LightSurfaceAlt,
     onSurfaceVariant = LightMuted,
-    outline = Color(0xFFE4DDD2),
+    outline = Color(0xFFDDE1E5),
+    outlineVariant = Color(0xFFE8EBEE),
     error = LiveRed,
-    secondaryContainer = Color(0xFFF1ECE4)
+    secondaryContainer = Color(0xFFEDF0F3)
+)
+
+private val NatijehShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(18.dp),
+    extraLarge = RoundedCornerShape(24.dp)
 )
 
 @Composable
@@ -66,6 +79,7 @@ fun NatijehTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = NatijehShapes,
         content = content
     )
 }

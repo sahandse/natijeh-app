@@ -38,13 +38,6 @@
 
 ## GitHub Actions
 
-ریپو باید **عمومی (Public)** باشد تا دقیقه رایگان Actions فعال شود.
+انتشار فقط با push کردن تگ هم‌نسخه با `versionName` (برای نمونه `v1.5.0`) انجام می‌شود. Workflow فایل‌های امضاشده APK و AAB را می‌سازد و به GitHub Release پیوست می‌کند.
 
-هر push، هر Pull Request و اجرای دستی workflow، APK امضاشده را می‌سازد.
-
-- Artifact در صفحه Actions قابل دانلود است
-- روی push (نه PR) GitHub Release با تگ نسخه (`v1.5.0`) و فایل `natijeh-1.5.0.apk` ساخته می‌شود
-
-برای ساخت دستی از تب Actions → **Android CI** → **Run workflow**.
-
-APK گیت‌هاب با keystore داخل `app/keystore/natijeh-release.jks` امضا می‌شود تا به‌روزرسانی‌های بعدی روی همین نصب بنشینند. برای Play Store یک کلید جدا بگذارید و رمزها را در Secrets ست کنید (`KEYSTORE_PATH` / `STORE_PASSWORD` / `KEY_PASSWORD`).
+کلید امضا در مخزن نگهداری نمی‌شود. پیش از انتشار این Repository Secrets را با یک کلید خصوصی جدید تنظیم کنید: `ANDROID_KEYSTORE_BASE64`، `ANDROID_STORE_PASSWORD`، `ANDROID_KEY_ALIAS` و `ANDROID_KEY_PASSWORD`.

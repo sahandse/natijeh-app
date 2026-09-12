@@ -98,8 +98,8 @@ fun GroupedMatchList(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         grouped.forEach { (league, leagueMatches) ->
                             item(key = "h-${league.id}-${league.name}") {
@@ -107,7 +107,7 @@ fun GroupedMatchList(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable(enabled = league.id.isNotBlank()) { onLeagueClick(league.id) }
-                                        .padding(vertical = 4.dp),
+                                        .padding(horizontal = 4.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
@@ -163,7 +163,7 @@ fun MatchCard(
     val scoreColor = if (live) LiveRed else MaterialTheme.colorScheme.onSurface
 
     Card(
-        shape = RoundedCornerShape(22.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = if (live) LiveRed.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
         ),
@@ -182,7 +182,7 @@ fun MatchCard(
                 )
             }
             Box(modifier = Modifier.weight(1f)) {
-                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                     if (showLeague) {
                         Text(
                             text = match.leagueName,
@@ -194,7 +194,7 @@ fun MatchCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onLeagueClick() }
-                                .padding(bottom = 10.dp)
+                                .padding(bottom = 8.dp)
                         )
                     }
                     Row(
@@ -218,14 +218,14 @@ fun MatchCard(
                                 Text(
                                     homeScore,
                                     color = scoreColor,
-                                    style = MaterialTheme.typography.displaySmall,
+                                    style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(":", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                                 Text(
                                     awayScore,
                                     color = scoreColor,
-                                    style = MaterialTheme.typography.displaySmall,
+                                    style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -281,12 +281,12 @@ private fun TeamMark(
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(42.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(model = logo, contentDescription = name, modifier = Modifier.size(36.dp))
+            AsyncImage(model = logo, contentDescription = name, modifier = Modifier.size(32.dp))
         }
         Text(
             text = name,
