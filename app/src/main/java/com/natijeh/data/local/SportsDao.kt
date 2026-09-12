@@ -8,11 +8,18 @@ import com.natijeh.data.model.LeagueEntity
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.NewsEntity
 import com.natijeh.data.model.PlayerEntity
+import com.natijeh.data.model.NotificationHistoryEntity
 import com.natijeh.data.model.TeamEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SportsDao {
+    @Query("SELECT * FROM notification_history ORDER BY createdAt DESC LIMIT 100")
+    fun getNotificationHistory(): Flow<List<NotificationHistoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNotificationHistory(items: List<NotificationHistoryEntity>)
+
     @Query("SELECT * FROM matches ORDER BY utcStart ASC, time ASC")
     fun getAllMatches(): Flow<List<MatchEntity>>
 

@@ -250,3 +250,13 @@ data class MatchAlert(
 ) {
     enum class Kind { GOAL, RED_CARD, KICKOFF, FULL_TIME }
 }
+
+@Entity(tableName = "notification_history")
+data class NotificationHistoryEntity(
+    @PrimaryKey val id: String,
+    val matchId: String,
+    val title: String,
+    val body: String,
+    val kind: String,
+    val createdAt: Long
+)

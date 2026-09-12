@@ -64,6 +64,9 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
     val newsFeed: StateFlow<List<NewsEntity>> = repository.newsFeed
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val notificationHistory = repository.notificationHistory
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val _isRefreshingNews = MutableStateFlow(false)
     val isRefreshingNews: StateFlow<Boolean> = _isRefreshingNews.asStateFlow()
 

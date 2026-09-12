@@ -12,6 +12,8 @@ import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.MatchLineups
 import com.natijeh.data.model.NewsEntity
 import com.natijeh.data.model.PlayerEntity
+import com.natijeh.data.model.NotificationHistoryEntity
+import com.natijeh.data.model.MatchAlert
 import com.natijeh.data.model.TeamEntity
 import com.natijeh.data.model.TeamResultMatch
 import com.natijeh.data.notify.GoalNotifier
@@ -80,6 +82,7 @@ class SportsRepository(
     val allTeams: Flow<List<TeamEntity>> = dao.getAllTeams()
     val favoritePlayers: Flow<List<PlayerEntity>> = dao.getFavoritePlayers()
     val newsFeed: Flow<List<NewsEntity>> = dao.getAllNews()
+    val notificationHistory: Flow<List<NotificationHistoryEntity>> = dao.getNotificationHistory()
 
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pollJob: Job? = null
@@ -279,7 +282,7 @@ class SportsRepository(
         val favoriteLeagues = dao.getFavoriteLeagueIds().toSet()
         val favoritePlayers = watchedPlayerIds()
         if (existing != null && MatchAlertFormatter.isWatched(updated, favoriteTeams, favoriteLeagues, favoritePlayers)) {
-            notifier.notify(MatchAlertFormatter.alerts(existing, updated))
+            notifyAndStore(MatchAlertFormatter.alerts(existing, updated))
         }
         dao.insertMatches(listOf(updated))
 
@@ -682,7 +685,7 @@ class SportsRepository(
         merged.forEach { current ->
             if (!MatchAlertFormatter.isWatched(current, favoriteTeams, favoriteLeagues, favoritePlayers)) return@forEach
             val previous = existing[current.id] ?: return@forEach
-            notifier.notify(MatchAlertFormatter.alerts(previous, current))
+            notifyAndStore(MatchAlertFormatter.alerts(previous, current))
         }
     }
 
@@ -692,6 +695,22 @@ class SportsRepository(
         } else {
             emptySet()
         }
+    }
+
+    private suspend fun notifyAndStore(alerts: List<MatchAlert>) {
+        if (alerts.isEmpty()) return
+        val now = System.currentTimeMillis()
+        dao.insertNotificationHistory(alerts.mapIndexed { index, alert ->
+            NotificationHistoryEntity(
+                id = "${alert.matchId}-${alert.kind}-$now-$index",
+                matchId = alert.matchId,
+                title = alert.title,
+                body = alert.body,
+                kind = alert.kind.name,
+                createdAt = now
+            )
+        })
+        notifier.notify(alerts)
     }
 
     private suspend fun syncLiveTracking() {

@@ -1,6 +1,7 @@
 package com.natijeh.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -66,7 +67,8 @@ fun GroupedMatchList(
     onTeamClick: (String) -> Unit,
     onLeagueClick: (String) -> Unit,
     onFavoriteToggle: (MatchEntity) -> Unit,
-    onOnlyFavoritesChange: (Boolean) -> Unit
+    onOnlyFavoritesChange: (Boolean) -> Unit,
+    compactCards: Boolean = true
 ) {
     val visible = remember(matches, onlyFavorites, favoriteTeamIds, favoriteLeagueIds) {
         if (!onlyFavorites) matches else matches.filter {
@@ -132,7 +134,8 @@ fun GroupedMatchList(
                                     onFavoriteToggle = { onFavoriteToggle(match) },
                                     onHomeTeamClick = { onTeamClick(match.homeTeamId) },
                                     onAwayTeamClick = { onTeamClick(match.awayTeamId) },
-                                    onLeagueClick = { onLeagueClick(match.leagueId) }
+                                    onLeagueClick = { onLeagueClick(match.leagueId) },
+                                    compact = compactCards
                                 )
                             }
                         }
@@ -152,7 +155,8 @@ fun MatchCard(
     onHomeTeamClick: () -> Unit = {},
     onAwayTeamClick: () -> Unit = {},
     onLeagueClick: () -> Unit = {},
-    showLeague: Boolean = true
+    showLeague: Boolean = true,
+    compact: Boolean = true
 ) {
     val live = match.status == "LIVE"
     val statusText = when (match.status) {
@@ -185,7 +189,7 @@ fun MatchCard(
                 )
             }
             Box(modifier = Modifier.weight(1f)) {
-                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = if (compact) 10.dp else 16.dp)) {
                     if (showLeague) {
                         Text(
                             text = match.leagueName,
@@ -208,7 +212,8 @@ fun MatchCard(
                             name = match.homeTeamName,
                             logo = match.homeTeamLogo,
                             alignEnd = false,
-                            modifier = Modifier.weight(1f).clickable { onHomeTeamClick() }
+                            modifier = Modifier.weight(1f).clickable { onHomeTeamClick() },
+                            compact = compact
                         )
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -218,19 +223,13 @@ fun MatchCard(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    homeScore,
-                                    color = scoreColor,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                AnimatedContent(targetState = homeScore, label = "home-score") { score ->
+                                    Text(score, color = scoreColor, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                }
                                 Text(":", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                                Text(
-                                    awayScore,
-                                    color = scoreColor,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                AnimatedContent(targetState = awayScore, label = "away-score") { score ->
+                                    Text(score, color = scoreColor, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                }
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(
@@ -250,7 +249,8 @@ fun MatchCard(
                             name = match.awayTeamName,
                             logo = match.awayTeamLogo,
                             alignEnd = true,
-                            modifier = Modifier.weight(1f).clickable { onAwayTeamClick() }
+                            modifier = Modifier.weight(1f).clickable { onAwayTeamClick() },
+                            compact = compact
                         )
                     }
                 }
@@ -279,7 +279,8 @@ private fun TeamMark(
     name: String,
     logo: String,
     alignEnd: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = true
 ) {
     Column(
         modifier = modifier,
@@ -288,12 +289,12 @@ private fun TeamMark(
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
+                .size(if (compact) 38.dp else 52.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(model = logo, contentDescription = name, modifier = Modifier.size(32.dp))
+            AsyncImage(model = logo, contentDescription = name, modifier = Modifier.size(if (compact) 28.dp else 40.dp))
         }
         Text(
             text = name,

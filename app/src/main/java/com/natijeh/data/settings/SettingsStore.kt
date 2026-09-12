@@ -26,6 +26,10 @@ enum class ThemeMode {
     }
 }
 
+enum class CardDensity { COMPACT, COMFORTABLE }
+
+enum class NotificationPreset { GOALS, IMPORTANT, ALL }
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.DARK,
     val alertsEnabled: Boolean = true,
@@ -35,7 +39,10 @@ data class AppSettings(
     val kickoffNotifications: Boolean = true,
     val redCardNotifications: Boolean = true,
     val fullTimeNotifications: Boolean = true,
-    val playerNotifications: Boolean = true
+    val playerNotifications: Boolean = true,
+    val onboardingCompleted: Boolean = false,
+    val cardDensity: CardDensity = CardDensity.COMPACT,
+    val notificationPreset: NotificationPreset = NotificationPreset.IMPORTANT
 )
 
 class SettingsStore(private val context: Context) {
@@ -49,7 +56,10 @@ class SettingsStore(private val context: Context) {
             kickoffNotifications = prefs[KICKOFF_NOTIFICATIONS] ?: true,
             redCardNotifications = prefs[RED_CARD_NOTIFICATIONS] ?: true,
             fullTimeNotifications = prefs[FULL_TIME_NOTIFICATIONS] ?: true,
-            playerNotifications = prefs[PLAYER_NOTIFICATIONS] ?: true
+            playerNotifications = prefs[PLAYER_NOTIFICATIONS] ?: true,
+            onboardingCompleted = prefs[ONBOARDING_COMPLETED] ?: false,
+            cardDensity = runCatching { CardDensity.valueOf(prefs[CARD_DENSITY] ?: "COMPACT") }.getOrDefault(CardDensity.COMPACT),
+            notificationPreset = runCatching { NotificationPreset.valueOf(prefs[NOTIFICATION_PRESET] ?: "IMPORTANT") }.getOrDefault(NotificationPreset.IMPORTANT)
         )
     }
 
@@ -75,6 +85,19 @@ class SettingsStore(private val context: Context) {
     suspend fun setRedCardNotifications(enabled: Boolean) = context.dataStore.edit { it[RED_CARD_NOTIFICATIONS] = enabled }
     suspend fun setFullTimeNotifications(enabled: Boolean) = context.dataStore.edit { it[FULL_TIME_NOTIFICATIONS] = enabled }
     suspend fun setPlayerNotifications(enabled: Boolean) = context.dataStore.edit { it[PLAYER_NOTIFICATIONS] = enabled }
+    suspend fun setOnboardingCompleted(completed: Boolean) = context.dataStore.edit { it[ONBOARDING_COMPLETED] = completed }
+    suspend fun setCardDensity(density: CardDensity) = context.dataStore.edit { it[CARD_DENSITY] = density.name }
+    suspend fun setNotificationPreset(preset: NotificationPreset) {
+        context.dataStore.edit {
+            it[NOTIFICATION_PRESET] = preset.name
+            it[ALERTS_ENABLED] = true
+            it[GOAL_NOTIFICATIONS] = true
+            it[KICKOFF_NOTIFICATIONS] = preset != NotificationPreset.GOALS
+            it[RED_CARD_NOTIFICATIONS] = preset != NotificationPreset.GOALS
+            it[FULL_TIME_NOTIFICATIONS] = preset != NotificationPreset.GOALS
+            it[PLAYER_NOTIFICATIONS] = preset == NotificationPreset.ALL
+        }
+    }
 
     companion object {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -86,5 +109,8 @@ class SettingsStore(private val context: Context) {
         private val RED_CARD_NOTIFICATIONS = booleanPreferencesKey("red_card_notifications")
         private val FULL_TIME_NOTIFICATIONS = booleanPreferencesKey("full_time_notifications")
         private val PLAYER_NOTIFICATIONS = booleanPreferencesKey("player_notifications")
+        private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        private val CARD_DENSITY = stringPreferencesKey("card_density")
+        private val NOTIFICATION_PRESET = stringPreferencesKey("notification_preset")
     }
 }

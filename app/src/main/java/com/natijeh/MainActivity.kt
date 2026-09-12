@@ -28,6 +28,7 @@ import androidx.navigation.navArgument
 import com.natijeh.data.notify.GoalNotifier
 import com.natijeh.data.settings.AppSettings
 import com.natijeh.ui.screens.LeagueDetailScreen
+import com.natijeh.ui.screens.FavoritesOnboardingScreen
 import com.natijeh.ui.screens.MainDashboard
 import com.natijeh.ui.screens.MatchDetailScreen
 import com.natijeh.ui.screens.PlayerDetailScreen
@@ -71,12 +72,20 @@ class MainActivity : ComponentActivity() {
 
                         NavHost(
                             navController = navController,
-                            startDestination = "dashboard"
+                            startDestination = if (settings.onboardingCompleted) "dashboard" else "onboarding"
                         ) {
+                            composable("onboarding") {
+                                FavoritesOnboardingScreen(
+                                    sportsViewModel = sportsViewModel,
+                                    settingsViewModel = settingsViewModel,
+                                    onFinished = { navController.navigate("dashboard") { popUpTo("onboarding") { inclusive = true } } }
+                                )
+                            }
                             composable("dashboard") {
                                 MainDashboard(
                                     sportsViewModel = sportsViewModel,
                                     openLiveTab = settings.openLiveTab,
+                                    compactCards = settings.cardDensity == com.natijeh.data.settings.CardDensity.COMPACT,
                                     onNavigateToMatch = { matchId ->
                                         navController.navigate("match_detail/$matchId")
                                     },

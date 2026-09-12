@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.natijeh.data.settings.AppSettings
 import com.natijeh.data.settings.SettingsStore
 import com.natijeh.data.settings.ThemeMode
+import com.natijeh.data.settings.CardDensity
+import com.natijeh.data.settings.NotificationPreset
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -27,6 +29,9 @@ class SettingsViewModel(private val store: SettingsStore) : ViewModel() {
     fun setRedCardNotifications(enabled: Boolean) = viewModelScope.launch { store.setRedCardNotifications(enabled) }
     fun setFullTimeNotifications(enabled: Boolean) = viewModelScope.launch { store.setFullTimeNotifications(enabled) }
     fun setPlayerNotifications(enabled: Boolean) = viewModelScope.launch { store.setPlayerNotifications(enabled) }
+    fun completeOnboarding() = viewModelScope.launch { store.setOnboardingCompleted(true) }
+    fun setCardDensity(density: CardDensity) = viewModelScope.launch { store.setCardDensity(density) }
+    fun setNotificationPreset(preset: NotificationPreset) = viewModelScope.launch { store.setNotificationPreset(preset) }
 
     class Factory(private val store: SettingsStore) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

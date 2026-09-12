@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.natijeh.BuildConfig
 import com.natijeh.data.settings.ThemeMode
+import com.natijeh.data.settings.CardDensity
+import com.natijeh.data.settings.NotificationPreset
 import com.natijeh.ui.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,7 +101,23 @@ fun SettingsScreen(
                 onSelect = viewModel::setThemeMode
             )
 
+            SectionLabel("چیدمان کارت‌ها")
+            ChoiceRow(
+                options = listOf("فشرده" to CardDensity.COMPACT, "بزرگ" to CardDensity.COMFORTABLE),
+                selected = settings.cardDensity,
+                onSelect = viewModel::setCardDensity
+            )
+
             SectionLabel("اعلان و نمایش")
+            ChoiceRow(
+                options = listOf(
+                    "فقط گل" to NotificationPreset.GOALS,
+                    "مهم" to NotificationPreset.IMPORTANT,
+                    "همه" to NotificationPreset.ALL
+                ),
+                selected = settings.notificationPreset,
+                onSelect = viewModel::setNotificationPreset
+            )
             SettingsCard {
                 SettingToggle(
                     icon = Icons.Outlined.Notifications,
@@ -172,6 +191,20 @@ fun SettingsScreen(
                 AboutRow("نسخه", BuildConfig.VERSION_NAME)
             }
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun <T> ChoiceRow(options: List<Pair<String, T>>, selected: T, onSelect: (T) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (label, value) ->
+            FilterChip(
+                selected = selected == value,
+                onClick = { onSelect(value) },
+                label = { Text(label) },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -97,6 +98,7 @@ import com.natijeh.ui.viewmodel.SportsViewModel
 fun MainDashboard(
     sportsViewModel: SportsViewModel,
     openLiveTab: Boolean = true,
+    compactCards: Boolean = true,
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
@@ -287,8 +289,8 @@ fun MainDashboard(
                 )
             } else {
                 when (activeTab) {
-                    "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing)
-                    "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing)
+                    "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
+                    "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
                     "leagues" -> LeaguesTabContent(sportsViewModel, onNavigateToLeague)
                     "favorites" -> FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer)
                     else -> MoreTabContent(
@@ -311,7 +313,8 @@ fun TodayTabContent(
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
-    isRefreshing: Boolean
+    isRefreshing: Boolean,
+    compactCards: Boolean = true
 ) {
     val selectedOffset by viewModel.selectedOffset.collectAsStateWithLifecycle()
     val matches by viewModel.matchesForSelectedDate.collectAsStateWithLifecycle()
@@ -356,7 +359,8 @@ fun TodayTabContent(
             onTeamClick = onNavigateToTeam,
             onLeagueClick = onNavigateToLeague,
             onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
-            onOnlyFavoritesChange = { onlyFavorites = it }
+            onOnlyFavoritesChange = { onlyFavorites = it },
+            compactCards = compactCards
         )
     }
 }
@@ -367,7 +371,8 @@ fun LiveTabContent(
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
-    isRefreshing: Boolean
+    isRefreshing: Boolean,
+    compactCards: Boolean = true
 ) {
     val liveMatches by viewModel.liveMatches.collectAsStateWithLifecycle()
     val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
@@ -404,7 +409,8 @@ fun LiveTabContent(
             onTeamClick = onNavigateToTeam,
             onLeagueClick = onNavigateToLeague,
             onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
-            onOnlyFavoritesChange = { onlyFavorites = it }
+            onOnlyFavoritesChange = { onlyFavorites = it },
+            compactCards = compactCards
         )
     }
 }
@@ -827,6 +833,9 @@ private fun MoreTabContent(
         "favorites" -> MoreSectionScaffold("علاقه‌مندی‌ها", onBack = { onSelectSection(null) }) {
             FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague)
         }
+        "notifications" -> MoreSectionScaffold("مرکز اعلان", onBack = { onSelectSection(null) }) {
+            NotificationCenterContent(sportsViewModel, onNavigateToMatch)
+        }
         else -> MoreHub(onSelectSection)
     }
 }
@@ -875,6 +884,45 @@ private fun MoreHub(onSelect: (String) -> Unit) {
             icon = Icons.Default.Favorite,
             onClick = { onSelect("favorites") }
         )
+        MoreTile(
+            title = "مرکز اعلان",
+            subtitle = "گل‌ها و اتفاقات مهم قبلی",
+            icon = Icons.Outlined.Notifications,
+            onClick = { onSelect("notifications") }
+        )
+    }
+}
+
+@Composable
+private fun NotificationCenterContent(viewModel: SportsViewModel, onNavigateToMatch: (String) -> Unit) {
+    val history by viewModel.notificationHistory.collectAsStateWithLifecycle()
+    if (history.isEmpty()) {
+        EmptyState("هنوز اعلانی ثبت نشده است.")
+        return
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(history, key = { it.id }) { alert ->
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToMatch(alert.matchId) }
+            ) {
+                Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier.size(42.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Outlined.Notifications, contentDescription = null) }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(alert.title, fontWeight = FontWeight.Bold)
+                        Text(alert.body, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -928,10 +976,27 @@ fun EmptyState(message: String) {
 
 @Composable
 fun LoadingState() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            Text("در حال دریافت نتایج زنده...", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(5) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth().height(116.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
+                    Box(Modifier.width(96.dp).height(20.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+                    Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
+                }
+            }
         }
     }
 }
