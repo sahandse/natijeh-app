@@ -27,7 +27,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -212,20 +213,20 @@ private fun TeamStadiumHeader(team: TeamEntity, onLongPressFavorite: () -> Unit)
             .padding(horizontal = 16.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Surface(shape = CircleShape, color = colors.surface.copy(alpha = 0.85f), modifier = Modifier.size(92.dp)) {
                 Box(contentAlignment = Alignment.Center) {
                     AsyncImage(model = team.logo, contentDescription = team.name, modifier = Modifier.size(68.dp))
                 }
             }
-            if (team.isFavorite) {
+            IconButton(
+                onClick = onLongPressFavorite,
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
                 Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "محبوب",
-                    tint = colors.primary,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(22.dp)
+                    imageVector = if (team.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (team.isFavorite) "حذف تیم از محبوب‌ها" else "افزودن تیم به محبوب‌ها",
+                    tint = if (team.isFavorite) colors.primary else colors.onSurfaceVariant
                 )
             }
         }

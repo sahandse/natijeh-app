@@ -22,6 +22,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.SportsScore
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.outlined.WbSunny
@@ -98,11 +102,53 @@ fun SettingsScreen(
             SettingsCard {
                 SettingToggle(
                     icon = Icons.Outlined.Notifications,
-                    title = "اعلان گل و کارت",
-                    subtitle = "برای تیم‌ها و لیگ‌های محبوب",
-                    checked = settings.goalNotifications,
-                    onCheckedChange = viewModel::setGoalNotifications
+                    title = "اعلان‌های مسابقه",
+                    subtitle = "برای بازی، تیم و لیگ‌های محبوب",
+                    checked = settings.alertsEnabled,
+                    onCheckedChange = viewModel::setAlertsEnabled
                 )
+                if (settings.alertsEnabled) {
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.Timer,
+                        title = "شروع مسابقه",
+                        subtitle = "هنگام شروع بازی محبوب",
+                        checked = settings.kickoffNotifications,
+                        onCheckedChange = viewModel::setKickoffNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.SportsScore,
+                        title = "گل",
+                        subtitle = "اعلان فوری تغییر نتیجه",
+                        checked = settings.goalNotifications,
+                        onCheckedChange = viewModel::setGoalNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.NotificationsActive,
+                        title = "کارت قرمز",
+                        subtitle = "اتفاق مهم مسابقه",
+                        checked = settings.redCardNotifications,
+                        onCheckedChange = viewModel::setRedCardNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.SportsSoccer,
+                        title = "نتیجه نهایی",
+                        subtitle = "پس از سوت پایان",
+                        checked = settings.fullTimeNotifications,
+                        onCheckedChange = viewModel::setFullTimeNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.Person,
+                        title = "بازیکنان محبوب",
+                        subtitle = "گل و کارت بازیکن دنبال‌شده",
+                        checked = settings.playerNotifications,
+                        onCheckedChange = viewModel::setPlayerNotifications
+                    )
+                }
                 Hairline()
                 SettingToggle(
                     icon = Icons.Outlined.WbSunny,

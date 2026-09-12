@@ -165,6 +165,7 @@ class SportsRepository(
         val favoriteMatches = dao.getFavoriteMatchIds().toSet()
         val favoriteTeams = dao.getFavoriteTeamIds().toSet()
         val favoriteLeagues = dao.getFavoriteLeagueIds().toSet()
+        val favoritePlayers = watchedPlayerIds()
         val now = System.currentTimeMillis()
 
         for (league in leagues) {
@@ -199,7 +200,7 @@ class SportsRepository(
 
         val existing = dao.getAllMatches().first().associateBy { it.id }
         val mergedMatches = matches.map { incoming -> mergeMatch(incoming, existing[incoming.id]) }
-        emitWatchAlerts(existing, mergedMatches, favoriteTeams, favoriteLeagues)
+        emitWatchAlerts(existing, mergedMatches, favoriteTeams, favoriteLeagues, favoritePlayers)
         if (mergedMatches.isNotEmpty()) {
             dao.insertMatches(mergedMatches)
             dao.deleteStaleMatches(offset, mergedMatches.map { it.id })
@@ -276,7 +277,8 @@ class SportsRepository(
         )
         val favoriteTeams = dao.getFavoriteTeamIds().toSet()
         val favoriteLeagues = dao.getFavoriteLeagueIds().toSet()
-        if (existing != null && MatchAlertFormatter.isWatched(updated, favoriteTeams, favoriteLeagues)) {
+        val favoritePlayers = watchedPlayerIds()
+        if (existing != null && MatchAlertFormatter.isWatched(updated, favoriteTeams, favoriteLeagues, favoritePlayers)) {
             notifier.notify(MatchAlertFormatter.alerts(existing, updated))
         }
         dao.insertMatches(listOf(updated))
@@ -521,7 +523,8 @@ class SportsRepository(
         val live = dao.getLiveMatches().first()
         val teams = dao.getFavoriteTeamIds().toSet()
         val leagues = dao.getFavoriteLeagueIds().toSet()
-        return live.any { MatchAlertFormatter.isWatched(it, teams, leagues) }
+        val players = watchedPlayerIds()
+        return live.any { MatchAlertFormatter.isWatched(it, teams, leagues, players) }
     }
 
     private suspend fun refreshDefaultLeagues() {
@@ -673,12 +676,21 @@ class SportsRepository(
         existing: Map<String, MatchEntity>,
         merged: List<MatchEntity>,
         favoriteTeams: Set<String>,
-        favoriteLeagues: Set<String>
+        favoriteLeagues: Set<String>,
+        favoritePlayers: Set<String>
     ) {
         merged.forEach { current ->
-            if (!MatchAlertFormatter.isWatched(current, favoriteTeams, favoriteLeagues)) return@forEach
+            if (!MatchAlertFormatter.isWatched(current, favoriteTeams, favoriteLeagues, favoritePlayers)) return@forEach
             val previous = existing[current.id] ?: return@forEach
             notifier.notify(MatchAlertFormatter.alerts(previous, current))
+        }
+    }
+
+    private suspend fun watchedPlayerIds(): Set<String> {
+        return if (settingsStore.settings.first().playerNotifications) {
+            dao.getFavoritePlayerIds().toSet()
+        } else {
+            emptySet()
         }
     }
 

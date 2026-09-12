@@ -108,4 +108,7 @@ interface SportsDao {
 
     @Query("SELECT * FROM players WHERE isFavorite = 1 ORDER BY name ASC")
     fun getFavoritePlayers(): Flow<List<PlayerEntity>>
+
+    @Query("SELECT id FROM players WHERE isFavorite = 1")
+    suspend fun getFavoritePlayerIds(): List<String>
 }

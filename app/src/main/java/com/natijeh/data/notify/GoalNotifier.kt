@@ -31,10 +31,18 @@ class GoalNotifier(
 
     suspend fun notify(alerts: List<MatchAlert>) {
         if (alerts.isEmpty()) return
-        if (settingsStore != null && !settingsStore.settings.first().goalNotifications) return
+        val settings = settingsStore?.settings?.first()
+        if (settings != null && !settings.alertsEnabled) return
         ensureChannels()
         val manager = NotificationManagerCompat.from(context)
-        alerts.forEach { alert ->
+        alerts.filter { alert ->
+            settings == null || when (alert.kind) {
+                MatchAlert.Kind.GOAL -> settings.goalNotifications
+                MatchAlert.Kind.RED_CARD -> settings.redCardNotifications
+                MatchAlert.Kind.KICKOFF -> settings.kickoffNotifications
+                MatchAlert.Kind.FULL_TIME -> settings.fullTimeNotifications
+            }
+        }.forEach { alert ->
             val intent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra(EXTRA_MATCH_ID, alert.matchId)

@@ -23,7 +23,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -251,15 +252,19 @@ fun MatchCard(
                         )
                     }
                 }
-                if (match.isFavorite) {
+                Row(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "محبوب",
-                        tint = MaterialTheme.colorScheme.primary,
+                        imageVector = if (match.isFavorite) Icons.Outlined.Notifications else Icons.Outlined.NotificationsNone,
+                        contentDescription = if (match.isFavorite) "اعلان این بازی فعال است" else "فعال‌کردن اعلان این بازی",
+                        tint = if (match.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .size(14.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onFavoriteToggle)
+                            .padding(6.dp)
+                            .size(17.dp)
                     )
                 }
             }

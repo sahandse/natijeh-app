@@ -16,12 +16,21 @@ object MatchAlertFormatter {
     fun isWatched(
         match: MatchEntity,
         favoriteTeamIds: Set<String>,
-        favoriteLeagueIds: Set<String>
+        favoriteLeagueIds: Set<String>,
+        favoritePlayerIds: Set<String> = emptySet()
     ): Boolean {
         return match.isFavorite ||
             match.homeTeamId in favoriteTeamIds ||
             match.awayTeamId in favoriteTeamIds ||
-            match.leagueId in favoriteLeagueIds
+            match.leagueId in favoriteLeagueIds ||
+            containsFavoritePlayer(match, favoritePlayerIds)
+    }
+
+    private fun containsFavoritePlayer(match: MatchEntity, favoritePlayerIds: Set<String>): Boolean {
+        if (favoritePlayerIds.isEmpty()) return false
+        return eventAdapter.fromJson(match.eventsJson).orEmpty().any {
+            it.playerId in favoritePlayerIds || it.extraPlayerId in favoritePlayerIds
+        }
     }
 
     fun alerts(previous: MatchEntity?, current: MatchEntity): List<MatchAlert> {

@@ -20,7 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -145,7 +146,7 @@ private fun PlayerHeader(
             .padding(horizontal = 16.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Surface(shape = CircleShape, color = colors.surfaceVariant, modifier = Modifier.size(112.dp)) {
                 if (player.portrait.isNotBlank()) {
                     AsyncImage(model = player.portrait, contentDescription = player.name, modifier = Modifier.size(112.dp).clip(CircleShape))
@@ -162,12 +163,14 @@ private fun PlayerHeader(
                     }
                 }
             }
-            if (player.isFavorite) {
+            IconButton(
+                onClick = onLongPressFavorite,
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
                 Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "محبوب",
-                    tint = colors.primary,
-                    modifier = Modifier.align(Alignment.TopEnd).size(22.dp)
+                    imageVector = if (player.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (player.isFavorite) "حذف بازیکن از محبوب‌ها" else "افزودن بازیکن به محبوب‌ها",
+                    tint = if (player.isFavorite) colors.primary else colors.onSurfaceVariant
                 )
             }
         }

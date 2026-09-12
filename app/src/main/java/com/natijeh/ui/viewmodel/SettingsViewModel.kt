@@ -19,9 +19,14 @@ class SettingsViewModel(private val store: SettingsStore) : ViewModel() {
     )
 
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { store.setThemeMode(mode) }
+    fun setAlertsEnabled(enabled: Boolean) = viewModelScope.launch { store.setAlertsEnabled(enabled) }
     fun setGoalNotifications(enabled: Boolean) = viewModelScope.launch { store.setGoalNotifications(enabled) }
     fun setKeepScreenOnLive(enabled: Boolean) = viewModelScope.launch { store.setKeepScreenOnLive(enabled) }
     fun setOpenLiveTab(enabled: Boolean) = viewModelScope.launch { store.setOpenLiveTab(enabled) }
+    fun setKickoffNotifications(enabled: Boolean) = viewModelScope.launch { store.setKickoffNotifications(enabled) }
+    fun setRedCardNotifications(enabled: Boolean) = viewModelScope.launch { store.setRedCardNotifications(enabled) }
+    fun setFullTimeNotifications(enabled: Boolean) = viewModelScope.launch { store.setFullTimeNotifications(enabled) }
+    fun setPlayerNotifications(enabled: Boolean) = viewModelScope.launch { store.setPlayerNotifications(enabled) }
 
     class Factory(private val store: SettingsStore) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

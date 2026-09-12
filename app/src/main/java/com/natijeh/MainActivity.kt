@@ -86,6 +86,9 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToLeague = { leagueId ->
                                         navController.navigate("league_detail/$leagueId")
                                     },
+                                    onNavigateToPlayer = { playerId ->
+                                        navController.navigate("player_detail/$playerId")
+                                    },
                                     onNavigateToSettings = {
                                         navController.navigate("settings")
                                     }

@@ -27,10 +27,10 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = DarkOnSurface,
     surfaceVariant = DarkSurfaceAlt,
     onSurfaceVariant = DarkMuted,
-    outline = Color(0xFF30353D),
-    outlineVariant = Color(0xFF252A31),
+    outline = Color(0xFF343434),
+    outlineVariant = Color(0xFF242424),
     error = LiveRed,
-    secondaryContainer = Color(0xFF22262D)
+    secondaryContainer = Color(0xFF1A1A1A)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -45,10 +45,10 @@ private val LightColorScheme = lightColorScheme(
     onSurface = LightOnSurface,
     surfaceVariant = LightSurfaceAlt,
     onSurfaceVariant = LightMuted,
-    outline = Color(0xFFDDE1E5),
-    outlineVariant = Color(0xFFE8EBEE),
+    outline = Color(0xFFD8D8D8),
+    outlineVariant = Color(0xFFE8E8E8),
     error = LiveRed,
-    secondaryContainer = Color(0xFFEDF0F3)
+    secondaryContainer = Color(0xFFEDEDED)
 )
 
 private val NatijehShapes = Shapes(
