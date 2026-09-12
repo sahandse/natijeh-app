@@ -2,6 +2,7 @@ package com.natijeh.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -171,6 +172,7 @@ fun MatchCard(
         elevation = natijehCardElevation(),
         modifier = Modifier
             .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
             .combinedClickable(onClick = onClick, onLongClick = onFavoriteToggle)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min).fillMaxWidth()) {

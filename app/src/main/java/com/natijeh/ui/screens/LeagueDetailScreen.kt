@@ -1,6 +1,7 @@
 package com.natijeh.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -123,10 +124,10 @@ fun LeagueDetailScreen(
             val fixtures = fixturesAdapter.fromJson(l.fixturesJson).orEmpty()
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = natijehCardElevation(),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -136,7 +137,12 @@ fun LeagueDetailScreen(
                         Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.size(56.dp)) {
                             AsyncImage(model = l.logo, contentDescription = l.name, modifier = Modifier.padding(12.dp).fillMaxSize())
                         }
-                        Text(l.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(l.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            if (l.country.isNotBlank()) {
+                                Text(l.country, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))

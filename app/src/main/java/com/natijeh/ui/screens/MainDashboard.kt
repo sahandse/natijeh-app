@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,13 +39,13 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -62,4 +63,875 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import ang]˜ÁªhëÈÏ∂ªßq´^wV÷‚Ä¢÷ˆFñfñW"“÷ˆFñfñW ¢Êfñ∆ƒ÷Ö6ó¶RÇê¢ÁFFñÊrÉbÊGí¿¢fW'Fñ6ƒ'&ÊvV÷VÁB“'&ÊvV÷VÁBÁ76VD'íÉ"ÊGê¢í∞¢÷˜&UFñ∆RÄ¢FóF∆R“-òM∏Õ™˛(Õò}är"¿¢7V'FóF∆R“-äÕä˝òçòMà¬™˝òMã-òmä}òbòÇäçãòmä}ò]òrò}òä≠òr"¿¢ñ6ˆ‚“ñ6ˆÁ2‰FVfV«BÂ7F"¿¢ˆ‰6∆ñ6≤“≤ˆÂ6V∆V7BÇ&∆VwVW2"í–¢ê¢÷˜&UFñ∆RÄ¢FóF∆R“-ä}äÌäçä}ã"¿¢7V'FóF∆R“-òòçä≠äçä}òBä˝ä}äÌòM∏¬òÇäÌä}ãäÕ∏¬ä}ã"òçãã-ãBª2"¿¢ñ6ˆ‚“ñ6ˆÁ2‰WFÙ÷ó'&˜&VB‰fñ∆∆VB‰∆ó7B¿¢ˆ‰6∆ñ6≤“≤ˆÂ6V∆V7BÇ&ÊWw2"í–¢ê¢÷˜&UFñ∆RÄ¢FóF∆R“-ãùòMä}ò-ò~(Õò]òmä˝∏Œ(Õò}är"¿¢7V'FóF∆R“-ä≠∏Õò^(Õò}ä}à¬òM∏Õ™˛(Õò}äròÇäçä}ã-∏Œ(Õò}ä}∏¬ò]ä›äçòçäÇ"¿¢ñ6ˆ‚“ñ6ˆÁ2‰FVfV«B‰ff˜&óFR¿¢ˆ‰6∆ñ6≤“≤ˆÂ6V∆V7BÇ&ff˜&óFW2"í–¢ê¢–ß–†§6ˆ◊˜6&∆Pß&ófFRgV‚÷˜&UFñ∆RáFóF∆S¢7G&ñÊr¬7V'FóF∆S¢7G&ñÊr¬ñ6ˆ„¢ñ÷vUfV7F˜"¬ˆ‰6∆ñ6≥¢Çí”‚VÊóBí∞¢6&BÄ¢6ÜR“&˜VÊFVD6˜&ÊW%6ÜRÉ#"ÊGí¿¢6ˆ∆˜'2“6&DFVfV«G2Ê6&D6ˆ∆˜'2Ü6ˆÁFñÊW$6ˆ∆˜"“÷FW&ñ≈FÜV÷RÊ6ˆ∆˜%66ÜV÷RÁ7W&f6Rí¿¢V∆WfFñˆ‚“ÊFñ¶VÑ6&DV∆WfFñˆ‚Çí¿¢÷ˆFñfñW"“÷ˆFñfñW"Êfñ∆ƒ÷ÖvñGFÇÇíÊ6∆ñ6∂&∆RÜˆ‰6∆ñ6≤“ˆ‰6∆ñ6≤ê¢í∞¢&˜rÄ¢÷ˆFñfñW"“÷ˆFñfñW"ÁFFñÊrÉÇÊGí¿¢fW'Fñ6ƒ∆ñvÊ÷VÁB“∆ñvÊ÷VÁB‰6VÁFW%fW'Fñ6∆«í¿¢Ü˜&ó¶ˆÁFƒ'&ÊvV÷VÁB“'&ÊvV÷VÁBÁ76VD'íÉbÊGê¢í∞¢&˜ÇÄ¢÷ˆFñfñW"“÷ˆFñfñW ¢Á6ó¶RÉCÇÊGê¢Ê6∆óÖ&˜VÊFVD6˜&ÊW%6ÜRÉBÊGíê¢Ê&6∂w&˜VÊBÑ÷FW&ñ≈FÜV÷RÊ6ˆ∆˜%66ÜV÷RÁ&ñ÷'íÊ6˜íÜ«Ü“„&bíí¿¢6ˆÁFVÁD∆ñvÊ÷VÁB“∆ñvÊ÷VÁB‰6VÁFW ¢í∞¢ñ6ˆ‚Üñ6ˆ‚¬6ˆÁFVÁDFW67&óFñˆ‚“ÁV∆¬¬FñÁB“÷FW&ñ≈FÜV÷RÊ6ˆ∆˜%66ÜV÷RÁ&ñ÷'íê¢–¢6ˆ«V÷‚Ü÷ˆFñfñW"“÷ˆFñfñW"ÁvVñváBÉbí¬fW'Fñ6ƒ'&ÊvV÷VÁB“'&ÊvV÷VÁBÁ76VD'íÉBÊGíí∞¢FWáBáFóF∆R¬fˆÁEvVñváB“fˆÁEvVñváB‰&ˆ∆B¬7Gñ∆R“÷FW&ñ≈FÜV÷RÁGóˆw&áíÁFóF∆T÷VFóV“ê¢FWáBá7V'FóF∆R¬6ˆ∆˜"“÷FW&ñ≈FÜV÷RÊ6ˆ∆˜%66ÜV÷RÊˆÂ7W&f6Uf&ñÁB¬7Gñ∆R“÷FW&ñ≈FÜV÷RÁGóˆw&áíÊ&ˆGï6÷∆¬ê¢–¢–¢–ß–†§6ˆ◊˜6&∆P¶gV‚V◊Gï7FFRÜ÷W76vS¢7G&ñÊrí∞¢&˜ÇÜ÷ˆFñfñW"“÷ˆFñfñW"Êfñ∆ƒ÷Ö6ó¶RÇíÁFFñÊrÉ3"ÊGí¬6ˆÁFVÁD∆ñvÊ÷VÁB“∆ñvÊ÷VÁB‰6VÁFW"í∞¢6ˆ«V÷‚ÜÜ˜&ó¶ˆÁFƒ∆ñvÊ÷VÁB“∆ñvÊ÷VÁB‰6VÁFW$Ü˜&ó¶ˆÁF∆«í¬fW'Fñ6ƒ'&ÊvV÷VÁB“'&ÊvV÷VÁBÁ76VD'íÉbÊGíí∞¢ñ6ˆ‚Üñ÷vUfV7F˜"“ñ6ˆÁ2‰FVfV«B‰ñÊfÚ¬6ˆÁFVÁDFW67&óFñˆ‚“ÁV∆¬¬FñÁB“÷FW&ñ≈FÜV÷RÊ6ˆ∆˜%66ÜV÷RÊˆÂ7W&f6Uf&ñÁB¬÷ˆFñfñW"“÷ˆFñfñW"Á6ó¶RÉcBÊGíê¢FWáBáFWáB“÷W76vR¬6ˆ∆˜"“÷FW&ñ≈FÜV÷RÊ6ˆ∆˜%66ÜV÷RÊˆÂ7W&f6Uf&ñÁB¬7Gñ∆R“÷FW&ñ≈FÜV÷RÁGóˆw&áíÊ&ˆGî∆&vR¬FWáD∆ñv‚“FWáD∆ñv‚‰6VÁFW"ê¢–¢–ß–†§6ˆ◊˜6&∆P¶gV‚∆ˆFñÊu7FFRÇí∞¢&˜ÇÜ÷ˆFñfñW"“÷ˆFñfñW"Êfñ∆ƒ÷Ö6ó¶RÇí¬6ˆÁFVÁD∆ñvÊ÷VÁB“∆ñvÊ÷VÁB‰6VÁFW"í∞¢6ˆ«V÷‚ÜÜ˜&ó¶ˆÁFƒ∆ñvÊ÷VÁB“∆ñvÊ÷VÁB‰6VÁFW$Ü˜&ó¶ˆÁF∆«í¬fW'Fñ6ƒ'&ÊvV÷VÁB“'&ÊvV÷VÁBÁ76VD'íÉ"ÊGíí∞¢6ó&7V∆%&ˆw&W74ñÊFñ6F˜"Ü6ˆ∆˜"“÷FW&ñ≈FÜV÷RÊ6ˆ∆˜%66ÜV÷RÁ&ñ÷'íê¢FWáBÇ-ä˝ãä›ä}òBä˝ã∏Õä}òä¢òmä≠ä}∏Õä¬ã-òmä˝òr‚‚‚"¬6ˆ∆˜"“÷FW&ñ≈FÜV÷RÊ6ˆ∆˜%66ÜV÷RÊˆÂ7W&f6Uf&ñÁB¬7Gñ∆R“÷FW&ñ≈FÜV÷RÁGóˆw&áíÊ&ˆGî÷VFóV“ê¢–¢–ß–†
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.natijeh.R
+import com.natijeh.ui.theme.LiveRed
+import com.natijeh.ui.theme.PulseDot
+import com.natijeh.ui.theme.natijehCardElevation
+import com.natijeh.ui.viewmodel.SportsViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainDashboard(
+    sportsViewModel: SportsViewModel,
+    openLiveTab: Boolean = true,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit,
+    onNavigateToPlayer: (String) -> Unit,
+    onNavigateToSettings: () -> Unit = {}
+) {
+    var activeTab by remember { mutableStateOf("today") }
+    var moreSection by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var showSearch by remember { mutableStateOf(false) }
+    val isRefreshing by sportsViewModel.isRefreshing.collectAsStateWithLifecycle()
+    val errorMessage by sportsViewModel.errorMessage.collectAsStateWithLifecycle()
+    val liveMatches by sportsViewModel.liveMatches.collectAsStateWithLifecycle()
+    var openedLiveTab by remember { mutableStateOf(false) }
+    LaunchedEffect(liveMatches, openLiveTab) {
+        if (openLiveTab && !openedLiveTab && liveMatches.isNotEmpty()) {
+            activeTab = "live"
+            openedLiveTab = true
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(R.drawable.ic_natijeh_mark)
+                                    .build(),
+                                contentDescription = "ŸÑŸà⁄ØŸà ŸÜÿ™€åÿ¨Ÿá",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "ŸÜÿ™€åÿ¨Ÿá",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showSearch = !showSearch }) {
+                        Icon(
+                            imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = "ÿ¨ÿ≥ÿ™ÿ¨Ÿà",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "ÿ™ŸÜÿ∏€åŸÖÿßÿ™",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        },
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp,
+                windowInsets = WindowInsets.navigationBars
+            ) {
+                val itemColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                )
+                NavigationBarItem(
+                    selected = activeTab == "today",
+                    onClick = { activeTab = "today"; showSearch = false },
+                    icon = { SlimTabIcon(Icons.Default.Home, activeTab == "today") },
+                    label = { Text("ÿ®ÿßÿ≤€å‚ÄåŸáÿß", style = MaterialTheme.typography.labelSmall) },
+                    colors = itemColors,
+                    modifier = Modifier.testTag("today_tab")
+                )
+                NavigationBarItem(
+                    selected = activeTab == "live",
+                    onClick = { activeTab = "live"; showSearch = false },
+                    icon = { SlimTabIcon(Icons.Default.PlayArrow, activeTab == "live") },
+                    label = { Text("ÿ≤ŸÜÿØŸá", style = MaterialTheme.typography.labelSmall) },
+                    colors = itemColors,
+                    modifier = Modifier.testTag("live_tab")
+                )
+                NavigationBarItem(
+                    selected = activeTab == "leagues",
+                    onClick = { activeTab = "leagues"; showSearch = false },
+                    icon = { SlimTabIcon(Icons.Default.EmojiEvents, activeTab == "leagues") },
+                    label = { Text("ŸÑ€å⁄Ø‚ÄåŸáÿß", style = MaterialTheme.typography.labelSmall) },
+                    colors = itemColors
+                )
+                NavigationBarItem(
+                    selected = activeTab == "favorites",
+                    onClick = { activeTab = "favorites"; showSearch = false },
+                    icon = { SlimTabIcon(Icons.Default.Favorite, activeTab == "favorites") },
+                    label = { Text("ŸÖÿ≠ÿ®Ÿàÿ®‚ÄåŸáÿß", style = MaterialTheme.typography.labelSmall) },
+                    colors = itemColors
+                )
+                NavigationBarItem(
+                    selected = activeTab == "more",
+                    onClick = {
+                        if (activeTab == "more") moreSection = null else activeTab = "more"
+                        showSearch = false
+                    },
+                    icon = { SlimTabIcon(Icons.Default.MoreHoriz, activeTab == "more") },
+                    label = { Text("ÿ®€åÿ¥ÿ™ÿ±", style = MaterialTheme.typography.labelSmall) },
+                    colors = itemColors,
+                    modifier = Modifier.testTag("more_tab")
+                )
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            if (!errorMessage.isNullOrBlank()) {
+                Text(
+                    text = errorMessage.orEmpty(),
+                    color = LiveRed,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            AnimatedVisibility(
+                visible = showSearch,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("ŸÜÿßŸÖ ÿ™€åŸÖÿå ŸÑ€å⁄Ø €åÿß ŸÖÿ±ÿ®€å ÿ±ÿß ÿ¨ÿ≥ÿ™ÿ¨Ÿà ⁄©ŸÜ€åÿØ...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    singleLine = true,
+                    leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "ÿ¨ÿ≥ÿ™ÿ¨Ÿà", tint = MaterialTheme.colorScheme.primary) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(imageVector = Icons.Default.Clear, contentDescription = "Ÿæÿß⁄© ⁄©ÿ±ÿØŸÜ", tint = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+            }
+
+            if (showSearch && searchQuery.isNotBlank()) {
+                SearchResultsContent(
+                    query = searchQuery,
+                    sportsViewModel = sportsViewModel,
+                    onNavigateToMatch = onNavigateToMatch,
+                    onNavigateToTeam = onNavigateToTeam,
+                    onNavigateToLeague = onNavigateToLeague
+                )
+            } else {
+                when (activeTab) {
+                    "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing)
+                    "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing)
+                    "leagues" -> LeaguesTabContent(sportsViewModel, onNavigateToLeague)
+                    "favorites" -> FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer)
+                    else -> MoreTabContent(
+                        moreSection = moreSection,
+                        onSelectSection = { moreSection = it },
+                        sportsViewModel = sportsViewModel,
+                        onNavigateToMatch = onNavigateToMatch,
+                        onNavigateToTeam = onNavigateToTeam,
+                        onNavigateToLeague = onNavigateToLeague
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TodayTabContent(
+    viewModel: SportsViewModel,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit,
+    isRefreshing: Boolean
+) {
+    val selectedOffset by viewModel.selectedOffset.collectAsStateWithLifecycle()
+    val matches by viewModel.matchesForSelectedDate.collectAsStateWithLifecycle()
+    val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
+    val favoriteLeagues by viewModel.favoriteLeagues.collectAsStateWithLifecycle()
+    var onlyFavorites by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(viewModel.datesList) { (label, offset) ->
+                val isSelected = selectedOffset == offset
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { viewModel.selectDate(offset) },
+                    label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        labelColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    shape = CircleShape
+                )
+            }
+        }
+
+        GroupedMatchList(
+            matches = matches,
+            isRefreshing = isRefreshing,
+            emptyMessage = if (onlyFavorites) "ŸÖÿ≥ÿßÿ®ŸÇŸá‚Äåÿß€å ÿßÿ≤ ÿπŸÑÿßŸÇŸá‚ÄåŸÖŸÜÿØ€å‚ÄåŸáÿß ÿØÿ± ÿß€åŸÜ ÿ±Ÿàÿ≤ ŸÜ€åÿ≥ÿ™." else "Ÿá€å⁄Ü ŸÖÿ≥ÿßÿ®ŸÇŸá‚Äåÿß€å ÿ®ÿ±ÿß€å ÿß€åŸÜ ÿ™ÿßÿ±€åÿÆ ÿ®ÿ±ŸÜÿßŸÖŸá‚Äåÿ±€åÿ≤€å ŸÜÿ¥ÿØŸá ÿßÿ≥ÿ™.",
+            onlyFavorites = onlyFavorites,
+            favoriteTeamIds = favoriteTeams.map { it.id }.toSet(),
+            favoriteLeagueIds = favoriteLeagues.map { it.id }.toSet(),
+            onRefresh = { viewModel.refresh() },
+            onMatchClick = onNavigateToMatch,
+            onTeamClick = onNavigateToTeam,
+            onLeagueClick = onNavigateToLeague,
+            onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
+            onOnlyFavoritesChange = { onlyFavorites = it }
+        )
+    }
+}
+
+@Composable
+fun LiveTabContent(
+    viewModel: SportsViewModel,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit,
+    isRefreshing: Boolean
+) {
+    val liveMatches by viewModel.liveMatches.collectAsStateWithLifecycle()
+    val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
+    val favoriteLeagues by viewModel.favoriteLeagues.collectAsStateWithLifecycle()
+    var onlyFavorites by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (liveMatches.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(LiveRed.copy(alpha = 0.1f))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PulseDot()
+                Text(
+                    text = "${liveMatches.size} ÿ®ÿßÿ≤€å ÿ≤ŸÜÿØŸá",
+                    color = LiveRed,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        GroupedMatchList(
+            matches = liveMatches,
+            isRefreshing = isRefreshing,
+            emptyMessage = if (onlyFavorites) "ÿ®ÿßÿ≤€å ÿ≤ŸÜÿØŸá‚Äåÿß€å ÿßÿ≤ ÿπŸÑÿßŸÇŸá‚ÄåŸÖŸÜÿØ€å‚ÄåŸáÿß ÿØÿ± ÿ¨ÿ±€åÿßŸÜ ŸÜ€åÿ≥ÿ™." else "ÿØÿ± ÿ≠ÿßŸÑ ÿ≠ÿßÿ∂ÿ± Ÿá€å⁄Ü ŸÖÿ≥ÿßÿ®ŸÇŸá‚Äåÿß€å ÿ®Ÿá ÿµŸàÿ±ÿ™ ÿ≤ŸÜÿØŸá ÿ®ÿ±⁄Øÿ≤ÿßÿ± ŸÜŸÖ€å‚Äåÿ¥ŸàÿØ.",
+            onlyFavorites = onlyFavorites,
+            favoriteTeamIds = favoriteTeams.map { it.id }.toSet(),
+            favoriteLeagueIds = favoriteLeagues.map { it.id }.toSet(),
+            onRefresh = { viewModel.refresh() },
+            onMatchClick = onNavigateToMatch,
+            onTeamClick = onNavigateToTeam,
+            onLeagueClick = onNavigateToLeague,
+            onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
+            onOnlyFavoritesChange = { onlyFavorites = it }
+        )
+    }
+}
+
+@Composable
+fun LeaguesTabContent(viewModel: SportsViewModel, onNavigateToLeague: (String) -> Unit) {
+    val leagues by viewModel.allLeagues.collectAsStateWithLifecycle()
+    if (leagues.isEmpty()) {
+        EmptyState(message = "ŸÑ€å⁄Ø‚ÄåŸáÿß ÿØÿ± ÿ≠ÿßŸÑ ÿ®ÿßÿ±⁄Øÿ∞ÿßÿ±€å Ÿáÿ≥ÿ™ŸÜÿØ.")
+        return
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(leagues, key = { it.id }) { league ->
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = natijehCardElevation(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+                    .clickable { onNavigateToLeague(league.id) }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.size(48.dp)) {
+                            AsyncImage(
+                                model = league.logo,
+                                contentDescription = league.name,
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .fillMaxSize()
+                            )
+                        }
+                        Text(
+                            text = league.name,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    IconButton(onClick = { viewModel.toggleLeagueFavorite(league.id, league.isFavorite) }) {
+                        Icon(
+                            imageVector = if (league.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "ÿπŸÑÿßŸÇŸá‚ÄåŸÖŸÜÿØ€å",
+                            tint = if (league.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NewsTabContent(viewModel: SportsViewModel) {
+    val news by viewModel.newsFeed.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshingNews.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var selectedCategory by remember { mutableStateOf("ŸáŸÖŸá") }
+    val filteredNews = remember(news, selectedCategory) {
+        when (selectedCategory) {
+            "ÿØÿßÿÆŸÑ€å" -> news.filter { it.source.contains("ÿØÿßÿÆŸÑ€å") }
+            "ÿÆÿßÿ±ÿ¨€å" -> news.filter { it.source.contains("ÿÆÿßÿ±ÿ¨€å") }
+            else -> news
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            listOf("ŸáŸÖŸá", "ÿØÿßÿÆŸÑ€å", "ÿÆÿßÿ±ÿ¨€å").forEach { category ->
+                val isSelected = selectedCategory == category
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { selectedCategory = category },
+                    label = {
+                        Text(
+                            text = when (category) {
+                                "ÿØÿßÿÆŸÑ€å" -> "ŸÅŸàÿ™ÿ®ÿßŸÑ ÿØÿßÿÆŸÑ€å"
+                                "ÿÆÿßÿ±ÿ¨€å" -> "ŸÅŸàÿ™ÿ®ÿßŸÑ ÿÆÿßÿ±ÿ¨€å"
+                                else -> "ŸáŸÖŸá ÿßÿÆÿ®ÿßÿ±"
+                            },
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        labelColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = { viewModel.refreshNews() }, modifier = Modifier.size(36.dp)) {
+                if (isRefreshing) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(imageVector = Icons.Default.Refresh, contentDescription = "ÿ®ÿ±Ÿàÿ≤ÿ±ÿ≥ÿßŸÜ€å ÿßÿÆÿ®ÿßÿ±", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+
+        if (filteredNews.isEmpty()) {
+            EmptyState(message = "Ÿá€å⁄Ü ÿÆÿ®ÿ±€å ÿØÿ± ÿß€åŸÜ ÿØÿ≥ÿ™Ÿá €åÿßŸÅÿ™ ŸÜÿ¥ÿØ.")
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(filteredNews, key = { it.id }) { article ->
+                    var isExpanded by remember { mutableStateOf(false) }
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (article.articleUrl.isNotBlank()) {
+                                    runCatching {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(article.articleUrl)))
+                                    }
+                                } else {
+                                    isExpanded = !isExpanded
+                                }
+                            }
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            if (article.imageUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = article.imageUrl,
+                                    contentDescription = article.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp)
+                                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                                )
+                            }
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(text = article.source, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                    Text(text = article.date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(text = article.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (isExpanded) article.content else article.summary,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (article.articleUrl.isNotBlank()) "ÿßÿØÿßŸÖŸá ŸÖÿ∑ŸÑÿ® ÿØÿ± Ÿàÿ±ÿ≤ÿ¥ €≥" else if (isExpanded) "ÿ®ÿ≥ÿ™ŸÜ ŸÖÿ™ŸÜ ÿÆÿ®ÿ±" else "ÿßÿØÿßŸÖŸá ŸÖÿ∑ŸÑÿ®...",
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FavoritesTabContent(
+    viewModel: SportsViewModel,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit,
+    onNavigateToPlayer: (String) -> Unit = {}
+) {
+    val matches by viewModel.favoriteMatches.collectAsStateWithLifecycle()
+    val teams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
+    val leagues by viewModel.favoriteLeagues.collectAsStateWithLifecycle()
+    val players by viewModel.favoritePlayers.collectAsStateWithLifecycle()
+
+    if (matches.isEmpty() && teams.isEmpty() && leagues.isEmpty() && players.isEmpty()) {
+        EmptyState(message = "ÿ¢€åÿ™ŸÖ€å ÿØÿ± ŸÑ€åÿ≥ÿ™ ÿπŸÑÿßŸÇŸá‚ÄåŸÖŸÜÿØ€å‚ÄåŸáÿß ŸÖŸàÿ¨ŸàÿØ ŸÜ€åÿ≥ÿ™.")
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (matches.isNotEmpty()) {
+                item { Text("ŸÖÿ≥ÿßÿ®ŸÇÿßÿ™ ŸÖÿ≠ÿ®Ÿàÿ®", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                items(matches, key = { "m${it.id}" }) { match ->
+                    MatchCard(
+                        match = match,
+                        onClick = { onNavigateToMatch(match.id) },
+                        onFavoriteToggle = { viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
+                        onHomeTeamClick = { onNavigateToTeam(match.homeTeamId) },
+                        onAwayTeamClick = { onNavigateToTeam(match.awayTeamId) },
+                        onLeagueClick = { onNavigateToLeague(match.leagueId) }
+                    )
+                }
+            }
+            if (teams.isNotEmpty()) {
+                item { Text("ÿ™€åŸÖ‚ÄåŸáÿß€å ŸÖÿ≠ÿ®Ÿàÿ®", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                items(teams, key = { "t${it.id}" }) { team ->
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToTeam(team.id) }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                AsyncImage(model = team.logo, contentDescription = team.name, modifier = Modifier.size(32.dp))
+                                Text(text = team.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                            }
+                            IconButton(onClick = { viewModel.toggleTeamFavorite(team.id, team.isFavorite) }) {
+                                Icon(imageVector = Icons.Default.Favorite, contentDescription = "ÿ≠ÿ∞ŸÅ", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+            if (leagues.isNotEmpty()) {
+                item { Text("ÿ¨ÿßŸÖ‚ÄåŸáÿß Ÿà ŸÑ€å⁄Ø‚ÄåŸáÿß€å ŸÖÿ≠ÿ®Ÿàÿ®", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                items(leagues, key = { "l${it.id}" }) { league ->
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToLeague(league.id) }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = league.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                            IconButton(onClick = { viewModel.toggleLeagueFavorite(league.id, league.isFavorite) }) {
+                                Icon(imageVector = Icons.Default.Favorite, contentDescription = "ÿ≠ÿ∞ŸÅ", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+            if (players.isNotEmpty()) {
+                item { Text("ÿ®ÿßÿ≤€å⁄©ŸÜÿßŸÜ ŸÖÿ≠ÿ®Ÿàÿ®", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                items(players, key = { "p${it.id}" }) { player ->
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth().clickable { onNavigateToPlayer(player.id) }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(48.dp)) {
+                                AsyncImage(model = player.portrait, contentDescription = player.name, contentScale = ContentScale.Crop)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(player.name, fontWeight = FontWeight.Bold, maxLines = 1)
+                                Text(
+                                    listOf(player.position, player.teamName).filter { it.isNotBlank() }.joinToString(" ¬∑ "),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1
+                                )
+                            }
+                            IconButton(onClick = { viewModel.togglePlayerFavorite(player.id, player.isFavorite) }) {
+                                Icon(Icons.Default.Favorite, contentDescription = "ÿ≠ÿ∞ŸÅ ÿßÿ≤ ŸÖÿ≠ÿ®Ÿàÿ®‚ÄåŸáÿß", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchResultsContent(
+    query: String,
+    sportsViewModel: SportsViewModel,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit
+) {
+    val allMatches by sportsViewModel.allMatches.collectAsStateWithLifecycle()
+    val leagues by sportsViewModel.allLeagues.collectAsStateWithLifecycle()
+    val teams by sportsViewModel.allTeams.collectAsStateWithLifecycle()
+    val needle = query.trim()
+
+    val filteredMatches = allMatches.filter {
+        it.homeTeamName.contains(needle, ignoreCase = true) ||
+            it.awayTeamName.contains(needle, ignoreCase = true) ||
+            it.leagueName.contains(needle, ignoreCase = true) ||
+            it.referee.contains(needle, ignoreCase = true)
+    }
+    val filteredLeagues = leagues.filter { it.name.contains(needle, ignoreCase = true) }
+    val filteredTeams = teams.filter {
+        it.name.contains(needle, ignoreCase = true) || it.coach.contains(needle, ignoreCase = true)
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (filteredMatches.isNotEmpty()) {
+            item { Text("ŸÖÿ≥ÿßÿ®ŸÇÿßÿ™ €åÿßŸÅÿ™ ÿ¥ÿØŸá", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            items(filteredMatches, key = { it.id }) { match ->
+                MatchCard(
+                    match = match,
+                    onClick = { onNavigateToMatch(match.id) },
+                    onFavoriteToggle = { sportsViewModel.toggleMatchFavorite(match.id, match.isFavorite) },
+                    onHomeTeamClick = { onNavigateToTeam(match.homeTeamId) },
+                    onAwayTeamClick = { onNavigateToTeam(match.awayTeamId) },
+                    onLeagueClick = { onNavigateToLeague(match.leagueId) }
+                )
+            }
+        }
+        if (filteredTeams.isNotEmpty()) {
+            item { Text("ÿ™€åŸÖ‚ÄåŸáÿß€å €åÿßŸÅÿ™ ÿ¥ÿØŸá", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            items(filteredTeams, key = { it.id }) { team ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToTeam(team.id) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AsyncImage(model = team.logo, contentDescription = team.name, modifier = Modifier.size(28.dp))
+                        Column {
+                            Text(team.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
+                            if (team.coach.isNotBlank()) {
+                                Text(team.coach, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (filteredLeagues.isNotEmpty()) {
+            item { Text("ŸÑ€å⁄Ø‚ÄåŸáÿß€å €åÿßŸÅÿ™ ÿ¥ÿØŸá", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            items(filteredLeagues, key = { it.id }) { league ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToLeague(league.id) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Text(league.name, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+        if (filteredMatches.isEmpty() && filteredLeagues.isEmpty() && filteredTeams.isEmpty()) {
+            item { EmptyState(message = "ŸÖŸàÿ±ÿØ€å ÿ®ÿß ÿ¨ÿ≥ÿ™ÿ¨Ÿà€å ÿ¥ŸÖÿß €åÿßŸÅÿ™ ŸÜÿ¥ÿØ.") }
+        }
+    }
+}
+
+@Composable
+private fun SlimTabIcon(icon: ImageVector, selected: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(imageVector = icon, contentDescription = null)
+        Box(
+            modifier = Modifier
+                .width(16.dp)
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+        )
+    }
+}
+
+@Composable
+private fun MoreTabContent(
+    moreSection: String?,
+    onSelectSection: (String?) -> Unit,
+    sportsViewModel: SportsViewModel,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit
+) {
+    when (moreSection) {
+        "leagues" -> MoreSectionScaffold("ŸÑ€å⁄Ø‚ÄåŸáÿß", onBack = { onSelectSection(null) }) {
+            LeaguesTabContent(sportsViewModel, onNavigateToLeague)
+        }
+        "news" -> MoreSectionScaffold("ÿßÿÆÿ®ÿßÿ±", onBack = { onSelectSection(null) }) {
+            NewsTabContent(sportsViewModel)
+        }
+        "favorites" -> MoreSectionScaffold("ÿπŸÑÿßŸÇŸá‚ÄåŸÖŸÜÿØ€å‚ÄåŸáÿß", onBack = { onSelectSection(null) }) {
+            FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague)
+        }
+        else -> MoreHub(onSelectSection)
+    }
+}
+
+@Composable
+private fun MoreSectionScaffold(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "ÿ®ÿßÿ≤⁄Øÿ¥ÿ™")
+            }
+            Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+        }
+        Box(modifier = Modifier.weight(1f)) { content() }
+    }
+}
+
+@Composable
+private fun MoreHub(onSelect: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        MoreTile(
+            title = "ŸÑ€å⁄Ø‚ÄåŸáÿß",
+            subtitle = "ÿ¨ÿØŸàŸÑÿå ⁄ØŸÑÿ≤ŸÜÿßŸÜ Ÿà ÿ®ÿ±ŸÜÿßŸÖŸá ŸáŸÅÿ™Ÿá",
+            icon = Icons.Default.Star,
+            onClick = { onSelect("leagues") }
+        )
+        MoreTile(
+            title = "ÿßÿÆÿ®ÿßÿ±",
+            subtitle = "ŸÅŸàÿ™ÿ®ÿßŸÑ ÿØÿßÿÆŸÑ€å Ÿà ÿÆÿßÿ±ÿ¨€å ÿßÿ≤ Ÿàÿ±ÿ≤ÿ¥ €≥",
+            icon = Icons.AutoMirrored.Filled.List,
+            onClick = { onSelect("news") }
+        )
+        MoreTile(
+            title = "ÿπŸÑÿßŸÇŸá‚ÄåŸÖŸÜÿØ€å‚ÄåŸáÿß",
+            subtitle = "ÿ™€åŸÖ‚ÄåŸáÿßÿå ŸÑ€å⁄Ø‚ÄåŸáÿß Ÿà ÿ®ÿßÿ≤€å‚ÄåŸáÿß€å ŸÖÿ≠ÿ®Ÿàÿ®",
+            icon = Icons.Default.Favorite,
+            onClick = { onSelect("favorites") }
+        )
+    }
+}
+
+@Composable
+private fun MoreTile(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = natijehCardElevation(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyState(message: String) {
+    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(imageVector = Icons.Default.SportsSoccer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(34.dp))
+            }
+            Text(text = message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+fun LoadingState() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            Text("ÿØÿ± ÿ≠ÿßŸÑ ÿØÿ±€åÿßŸÅÿ™ ŸÜÿ™ÿß€åÿ¨ ÿ≤ŸÜÿØŸá...", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
