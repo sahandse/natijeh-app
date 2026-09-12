@@ -25,7 +25,7 @@
 
 ## نسخه
 
-نسخه فعلی: **1.5.1** (`versionCode` 7)
+نسخه فعلی: **1.5.2** (`versionCode` 8)
 
 شناسه نصب: `ir.natijeh.app` — این نسخه جدا از APK قبلی (`com.aistudio.natijeh.vdfgkx`) نصب می‌شود.
 
@@ -38,6 +38,6 @@
 
 ## GitHub Actions
 
-انتشار فقط با push کردن تگ هم‌نسخه با `versionName` (برای نمونه `v1.5.1`) انجام می‌شود. Workflow فایل‌های امضاشده APK و AAB را می‌سازد و به GitHub Release پیوست می‌کند.
+انتشار فقط با push کردن تگ هم‌نسخه با `versionName` (برای نمونه `v1.5.2`) انجام می‌شود. Workflow فایل‌های امضاشده APK و AAB را می‌سازد و به GitHub Release پیوست می‌کند.
 
 کلید امضا در مخزن نگهداری نمی‌شود. پیش از انتشار این Repository Secrets را با یک کلید خصوصی جدید تنظیم کنید: `ANDROID_KEYSTORE_BASE64`، `ANDROID_STORE_PASSWORD`، `ANDROID_KEY_ALIAS` و `ANDROID_KEY_PASSWORD`.
