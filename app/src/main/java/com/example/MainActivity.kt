@@ -77,8 +77,16 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToLeague = { leagueId ->
                                         navController.navigate("league_detail/$leagueId")
+                                    },
+                                    onNavigateToSettings = {
+                                        navController.navigate("settings")
                                     }
                                 )
+                            }
+
+                            // Settings Screen (app update check)
+                            composable("settings") {
+                                SettingsScreen(onBack = { navController.popBackStack() })
                             }
 
                             // Match Details Screen (Timeline, Statistics, Lineups)

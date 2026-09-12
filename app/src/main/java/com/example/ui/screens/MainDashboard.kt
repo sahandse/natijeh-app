@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -29,6 +31,14 @@ import coil.request.ImageRequest
 import com.example.R
 import com.example.data.model.*
 import com.example.ui.viewmodel.SportsViewModel
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+
+private val dashboardMoshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+private val dashboardSquadAdapter = dashboardMoshi.adapter<List<SquadPlayer>>(
+    Types.newParameterizedType(List::class.java, SquadPlayer::class.java)
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +47,8 @@ fun MainDashboard(
     sportsViewModel: SportsViewModel,
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
-    onNavigateToLeague: (String) -> Unit
+    onNavigateToLeague: (String) -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     var activeTab by remember { mutableStateOf("today") }
     var searchQuery by remember { mutableStateOf("") }
@@ -78,6 +89,13 @@ fun MainDashboard(
                         Icon(
                             imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
                             contentDescription = "جستجو",
+                            tint = Color.White
+                        )
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "تنظیمات",
                             tint = Color.White
                         )
                     }
@@ -208,7 +226,7 @@ fun MainDashboard(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("نام تیم، لیگ یا مربی را جستجو کنید...", color = Color(0xFF64748B)) },
+                    placeholder = { Text("نام تیم، بازیکن، لیگ یا مربی را جستجو کنید...", color = Color(0xFF64748B)) },
                     singleLine = true,
                     leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "جستجو", tint = Color(0xFF18C964)) },
                     trailingIcon = {
@@ -314,16 +332,58 @@ fun LiveTabContent(viewModel: SportsViewModel, onNavigateToMatch: (String) -> Un
     if (liveMatches.isEmpty()) {
         EmptyState(message = "در حال حاضر هیچ مسابقه‌ای به صورت زنده برگزار نمی‌شود.")
     } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(liveMatches) { match ->
-                MatchCard(match = match, onClick = { onNavigateToMatch(match.id) }, onFavoriteToggle = {
-                    viewModel.toggleMatchFavorite(match.id, match.isFavorite)
-                })
+        Column(modifier = Modifier.fillMaxSize()) {
+            LiveHeaderBanner(count = liveMatches.size)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                items(liveMatches, key = { it.id }) { match ->
+                    LiveMatchCard(
+                        match = match,
+                        onClick = { onNavigateToMatch(match.id) },
+                        onFavoriteToggle = { viewModel.toggleMatchFavorite(match.id, match.isFavorite) }
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun LiveHeaderBanner(count: Int) {
+    val infinite = rememberInfiniteTransition(label = "live-pulse")
+    val alpha by infinite.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(900), repeatMode = RepeatMode.Reverse),
+        label = "pulse-alpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Color(0xFFEF4444).copy(alpha = 0.22f), Color(0xFF0B0E14))
+                )
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFEF4444).copy(alpha = alpha))
+            )
+            Text(
+                "$count مسابقه به صورت زنده در جریان است",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleSmall
+            )
         }
     }
 }
@@ -628,9 +688,22 @@ fun SearchResultsContent(
     // Search across ALL matches, not just selected date
     val allMatches by sportsViewModel.allMatches.collectAsStateWithLifecycle()
     val leagues by sportsViewModel.allLeagues.collectAsStateWithLifecycle()
+    val teams by sportsViewModel.allTeams.collectAsStateWithLifecycle()
 
     val filteredMatches = allMatches.filter { it.homeTeamName.contains(query) || it.awayTeamName.contains(query) || it.leagueName.contains(query) }
     val filteredLeagues = leagues.filter { it.name.contains(query) || it.country.contains(query) }
+
+    // Search players inside each team's squad JSON
+    val filteredPlayers = remember(teams, query) {
+        teams.flatMap { team ->
+            val squad = try {
+                dashboardSquadAdapter.fromJson(team.squadJson) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+            squad.filter { it.name.contains(query) }.map { player -> team to player }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -658,7 +731,33 @@ fun SearchResultsContent(
                 }
             }
         }
-        if (filteredMatches.isEmpty() && filteredLeagues.isEmpty()) {
+        if (filteredPlayers.isNotEmpty()) {
+            item { Text("بازیکنان یافت شده", color = Color(0xFF18C964), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            items(filteredPlayers) { (team, player) ->
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToTeam(team.id) },
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(player.name, color = Color.White, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                            Text("${team.name} · ${player.position}", color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
+                        }
+                        Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFF18C964).copy(alpha = 0.2f)) {
+                            Text(player.position, color = Color(0xFF18C964), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        }
+        if (filteredMatches.isEmpty() && filteredLeagues.isEmpty() && filteredPlayers.isEmpty()) {
             item { EmptyState(message = "موردی با جستجوی شما یافت نشد.") }
         }
     }
@@ -783,6 +882,137 @@ fun MatchCard(match: MatchEntity, onClick: () -> Unit, onFavoriteToggle: () -> U
                 }
             }
         }
+    }
+}
+
+@Composable
+fun LiveMatchCard(
+    match: MatchEntity,
+    onClick: () -> Unit,
+    onFavoriteToggle: () -> Unit
+) {
+    val infinite = rememberInfiniteTransition(label = "live-dot")
+    val dotAlpha by infinite.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(800), repeatMode = RepeatMode.Reverse),
+        label = "live-dot-alpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFFEF4444).copy(alpha = 0.35f), Color(0xFF161B22))
+                )
+            )
+            .padding(1.5.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(19.dp))
+                .background(Color(0xFF12161D))
+                .clickable { onClick() }
+                .padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(match.leagueName, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFFEF4444).copy(alpha = 0.15f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFEF4444).copy(alpha = dotAlpha))
+                    )
+                    Text("زنده ${match.minute}'", color = Color(0xFFEF4444), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TeamBadge(name = match.homeTeamName, modifier = Modifier.weight(1f))
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(match.homeScore.toString(), color = Color(0xFF18C964), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                    Text(":", color = Color(0xFF475569), style = MaterialTheme.typography.displaySmall)
+                    Text(match.awayScore.toString(), color = Color(0xFF18C964), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                }
+
+                TeamBadge(name = match.awayTeamName, modifier = Modifier.weight(1f), alignEnd = true)
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+            HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = match.venue, color = Color(0xFF64748B), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                IconButton(onClick = onFavoriteToggle) {
+                    Icon(
+                        imageVector = if (match.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "علاقه‌مندی",
+                        tint = if (match.isFavorite) Color(0xFF18C964) else Color(0xFF64748B)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeamBadge(name: String, modifier: Modifier = Modifier, alignEnd: Boolean = false) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(listOf(Color(0xFF18C964).copy(alpha = 0.25f), Color(0xFF21262D)))
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                name.take(1),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = name,
+            color = Color.White,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

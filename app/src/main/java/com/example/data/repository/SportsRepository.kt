@@ -53,6 +53,7 @@ class SportsRepository(
     val favoriteTeams: Flow<List<TeamEntity>> = dao.getFavoriteTeams()
     val favoriteLeagues: Flow<List<LeagueEntity>> = dao.getFavoriteLeagues()
     val allLeagues: Flow<List<LeagueEntity>> = dao.getAllLeagues()
+    val allTeams: Flow<List<TeamEntity>> = dao.getAllTeams()
     val newsFeed: Flow<List<NewsEntity>> = dao.getAllNews()
 
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())

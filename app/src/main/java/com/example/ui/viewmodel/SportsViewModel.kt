@@ -50,6 +50,10 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
     val allLeagues: StateFlow<List<LeagueEntity>> = repository.allLeagues
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Teams (for player search)
+    val allTeams: StateFlow<List<TeamEntity>> = repository.allTeams
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // News
     val newsFeed: StateFlow<List<NewsEntity>> = repository.newsFeed
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

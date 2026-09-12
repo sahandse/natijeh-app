@@ -38,6 +38,9 @@ interface SportsDao {
     fun getFavoriteMatches(): Flow<List<MatchEntity>>
 
     // --- TEAMS ---
+    @Query("SELECT * FROM teams ORDER BY name ASC")
+    fun getAllTeams(): Flow<List<TeamEntity>>
+
     @Query("SELECT * FROM teams WHERE id = :id")
     suspend fun getTeamById(id: String): TeamEntity?
 
