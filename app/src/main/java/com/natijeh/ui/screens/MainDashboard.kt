@@ -103,7 +103,6 @@ fun MainDashboard(
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
     onNavigateToPlayer: (String) -> Unit,
-    onNavigateToStream: (String, String) -> Unit,
     onNavigateToSettings: () -> Unit = {}
 ) {
     var activeTab by remember { mutableStateOf("today") }
@@ -291,7 +290,7 @@ fun MainDashboard(
             } else {
                 when (activeTab) {
                     "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
-                    "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards, onNavigateToStream)
+                    "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
                     "leagues" -> LeaguesTabContent(sportsViewModel, onNavigateToLeague)
                     "favorites" -> FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer)
                     else -> MoreTabContent(
@@ -373,8 +372,7 @@ fun LiveTabContent(
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
     isRefreshing: Boolean,
-    compactCards: Boolean = true,
-    onNavigateToStream: (String, String) -> Unit = { _, _ -> }
+    compactCards: Boolean = true
 ) {
     val liveMatches by viewModel.liveMatches.collectAsStateWithLifecycle()
     val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
@@ -400,7 +398,7 @@ fun LiveTabContent(
                             PulseDot(size = 9.dp)
                             Text("همین حالا زنده", color = LiveRed, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                         }
-                        Text("نتیجه و پخش رسمی مسابقات", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text("نتیجه لحظه‌ای مسابقات", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LiveMetric(liveMatches.size.toString(), "بازی")
@@ -422,8 +420,7 @@ fun LiveTabContent(
             onLeagueClick = onNavigateToLeague,
             onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
             onOnlyFavoritesChange = { onlyFavorites = it },
-            compactCards = compactCards,
-            onStreamClick = onNavigateToStream
+            compactCards = compactCards
         )
     }
 }

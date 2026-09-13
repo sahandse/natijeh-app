@@ -32,7 +32,6 @@ import com.natijeh.ui.screens.FavoritesOnboardingScreen
 import com.natijeh.ui.screens.MainDashboard
 import com.natijeh.ui.screens.MatchDetailScreen
 import com.natijeh.ui.screens.PlayerDetailScreen
-import com.natijeh.ui.screens.OfficialStreamScreen
 import com.natijeh.ui.screens.SettingsScreen
 import com.natijeh.ui.screens.TeamDetailScreen
 import com.natijeh.ui.theme.NatijehTheme
@@ -99,9 +98,6 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToPlayer = { playerId ->
                                         navController.navigate("player_detail/$playerId")
                                     },
-                                    onNavigateToStream = { matchId, providerId ->
-                                        navController.navigate("official_stream/$matchId/$providerId")
-                                    },
                                     onNavigateToSettings = {
                                         navController.navigate("settings")
                                     }
@@ -111,20 +107,6 @@ class MainActivity : ComponentActivity() {
                                 SettingsScreen(
                                     viewModel = settingsViewModel,
                                     sportsViewModel = sportsViewModel,
-                                    onBack = { navController.popBackStack() }
-                                )
-                            }
-                            composable(
-                                route = "official_stream/{matchId}/{providerId}",
-                                arguments = listOf(
-                                    navArgument("matchId") { type = NavType.StringType },
-                                    navArgument("providerId") { type = NavType.StringType }
-                                )
-                            ) { backStackEntry ->
-                                OfficialStreamScreen(
-                                    matchId = backStackEntry.arguments?.getString("matchId").orEmpty(),
-                                    providerId = backStackEntry.arguments?.getString("providerId").orEmpty(),
-                                    viewModel = sportsViewModel,
                                     onBack = { navController.popBackStack() }
                                 )
                             }
@@ -146,9 +128,6 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToPlayer = { playerId ->
                                         navController.navigate("player_detail/$playerId")
-                                    },
-                                    onNavigateToStream = { streamMatchId, providerId ->
-                                        navController.navigate("official_stream/$streamMatchId/$providerId")
                                     }
                                 )
                             }

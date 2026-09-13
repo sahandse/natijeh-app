@@ -19,12 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Card
@@ -48,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.MatchEntity
-import com.natijeh.data.model.OfficialStreamResolver
 import com.natijeh.data.util.MatchAlertFormatter
 import com.natijeh.ui.theme.LiveRed
 import com.natijeh.ui.theme.PulseDot
@@ -69,8 +66,7 @@ fun GroupedMatchList(
     onLeagueClick: (String) -> Unit,
     onFavoriteToggle: (MatchEntity) -> Unit,
     onOnlyFavoritesChange: (Boolean) -> Unit,
-    compactCards: Boolean = true,
-    onStreamClick: (String, String) -> Unit = { _, _ -> }
+    compactCards: Boolean = true
 ) {
     val visible = remember(matches, onlyFavorites, favoriteTeamIds, favoriteLeagueIds) {
         if (!onlyFavorites) matches else matches.filter {
@@ -137,8 +133,7 @@ fun GroupedMatchList(
                                     onHomeTeamClick = { onTeamClick(match.homeTeamId) },
                                     onAwayTeamClick = { onTeamClick(match.awayTeamId) },
                                     onLeagueClick = { onLeagueClick(match.leagueId) },
-                                    compact = compactCards,
-                                    onStreamClick = { provider -> onStreamClick(match.id, provider) }
+                                    compact = compactCards
                                 )
                             }
                         }
@@ -159,8 +154,7 @@ fun MatchCard(
     onAwayTeamClick: () -> Unit = {},
     onLeagueClick: () -> Unit = {},
     showLeague: Boolean = true,
-    compact: Boolean = true,
-    onStreamClick: (String) -> Unit = {}
+    compact: Boolean = true
 ) {
     val live = match.status == "LIVE"
     val statusText = when (match.status) {
@@ -256,23 +250,6 @@ fun MatchCard(
                             modifier = Modifier.weight(1f).clickable { onAwayTeamClick() },
                             compact = compact
                         )
-                    }
-                    if (live) {
-                        val streams = remember(match) { OfficialStreamResolver.forMatch(match) }
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            contentPadding = PaddingValues(horizontal = 2.dp)
-                        ) {
-                            items(streams, key = { it.id }) { stream ->
-                                FilterChip(
-                                    selected = false,
-                                    onClick = { onStreamClick(stream.id) },
-                                    label = { Text(stream.title, style = MaterialTheme.typography.labelSmall) },
-                                    leadingIcon = { Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(15.dp)) }
-                                )
-                            }
-                        }
                     }
                 }
                 Row(
