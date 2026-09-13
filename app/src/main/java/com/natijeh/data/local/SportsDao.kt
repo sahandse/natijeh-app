@@ -104,6 +104,9 @@ interface SportsDao {
     @Query("SELECT * FROM players WHERE id = :id")
     fun getPlayerByIdFlow(id: String): Flow<PlayerEntity?>
 
+    @Query("SELECT * FROM players ORDER BY name ASC")
+    fun getAllPlayers(): Flow<List<PlayerEntity>>
+
     @Query("SELECT * FROM players WHERE id = :id")
     suspend fun getPlayerById(id: String): PlayerEntity?
 
