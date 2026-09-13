@@ -12,11 +12,18 @@ data class OfficialStream(
 
 object OfficialStreamResolver {
     fun forMatch(match: MatchEntity): List<OfficialStream> {
-        if (match.status != "LIVE") return emptyList()
         val query = URLEncoder.encode(
-            "${match.homeTeamName} ${match.awayTeamName} پخش زنده",
+            "${match.homeTeamName} ${match.awayTeamName} ${if (match.status == "FINISHED") "خلاصه بازی" else "پخش زنده"}",
             StandardCharsets.UTF_8.toString()
         )
+        if (match.status == "FINISHED") {
+            return listOf(
+                OfficialStream("highlight-v3", "ورزش ۳", "جست‌وجوی خلاصه رسمی مسابقه", "https://video.varzesh3.com/search?q=$query"),
+                OfficialStream("highlight-360", "فوتبال ۳۶۰", "خلاصه‌ها و ویدئوهای مسابقه", "https://football360.ir/search?q=$query"),
+                OfficialStream("highlight-aparat", "آپارات", "جست‌وجوی ویدئوی رسمی", "https://www.aparat.com/result/$query")
+            )
+        }
+        if (match.status != "LIVE") return emptyList()
         val providers = mutableListOf(
             OfficialStream("aparat", "آپارات", "جستجوی پخش رسمی مسابقه", "https://www.aparat.com/result/$query"),
             OfficialStream("football360", "فوتبال ۳۶۰", "بررسی صفحه پخش مسابقه", "https://football360.ir/search?q=$query"),
