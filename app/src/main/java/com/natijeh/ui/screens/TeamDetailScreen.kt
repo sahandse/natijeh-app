@@ -242,6 +242,26 @@ private fun TeamStadiumHeader(team: TeamEntity, onLongPressFavorite: () -> Unit)
             HeaderStat(label = "برد", value = team.won.toString())
             HeaderStat(label = "تفاضل", value = gdText, emphasizePositive = gd >= 0)
         }
+        Spacer(modifier = Modifier.height(14.dp))
+        Surface(shape = RoundedCornerShape(18.dp), color = colors.background.copy(alpha = 0.72f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                CompactStat("بازی", team.played.toString())
+                CompactStat("مساوی", team.drawn.toString())
+                CompactStat("باخت", team.lost.toString())
+                CompactStat("گل", "${team.goalsFor}:${team.goalsAgainst}")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactStat(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
