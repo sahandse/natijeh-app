@@ -80,6 +80,7 @@ class SportsRepository(
     val favoriteLeagues: Flow<List<LeagueEntity>> = dao.getFavoriteLeagues()
     val allLeagues: Flow<List<LeagueEntity>> = dao.getAllLeagues()
     val allTeams: Flow<List<TeamEntity>> = dao.getAllTeams()
+    val allPlayers: Flow<List<PlayerEntity>> = dao.getAllPlayers()
     val favoritePlayers: Flow<List<PlayerEntity>> = dao.getFavoritePlayers()
     val newsFeed: Flow<List<NewsEntity>> = dao.getAllNews()
     val notificationHistory: Flow<List<NotificationHistoryEntity>> = dao.getNotificationHistory()
