@@ -66,6 +66,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,6 +77,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -88,7 +90,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.natijeh.R
+import com.natijeh.data.mapper.SportsMapper
+import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.NewsEntity
+import com.natijeh.data.model.PlayerEntity
+import com.natijeh.data.model.TeamEntity
+import com.natijeh.data.util.MatchAlertFormatter
 import com.natijeh.ui.theme.LiveRed
 import com.natijeh.ui.theme.PulseDot
 import com.natijeh.ui.theme.natijehCardElevation
@@ -292,7 +299,7 @@ fun MainDashboard(
                 )
             } else {
                 when (activeTab) {
-                    "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
+                    "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer, isRefreshing, compactCards)
                     "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
                     "leagues" -> LeaguesTabContent(sportsViewModel, onNavigateToLeague)
                     "favorites" -> FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer)
@@ -317,6 +324,7 @@ fun TodayTabContent(
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
+    onNavigateToPlayer: (String) -> Unit,
     isRefreshing: Boolean,
     compactCards: Boolean = true
 ) {
@@ -324,72 +332,286 @@ fun TodayTabContent(
     val matches by viewModel.matchesForSelectedDate.collectAsStateWithLifecycle()
     val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
     val favoriteLeagues by viewModel.favoriteLeagues.collectAsStateWithLifecycle()
+    val favoritePlayers by viewModel.favoritePlayers.collectAsStateWithLifecycle()
+    val allLeagues by viewModel.allLeagues.collectAsStateWithLifecycle()
+    val news by viewModel.newsFeed.collectAsStateWithLifecycle()
     var onlyFavorites by remember { mutableStateOf(false) }
     val liveCount = matches.count { it.status == "LIVE" }
     val finishedCount = matches.count { it.status == "FINISHED" }
+    val favoriteTeamIds = favoriteTeams.map { it.id }.toSet()
+    val favoriteLeagueIds = favoriteLeagues.map { it.id }.toSet()
+    val visibleMatches = remember(matches, onlyFavorites, favoriteTeamIds, favoriteLeagueIds) {
+        if (!onlyFavorites) matches else matches.filter { MatchAlertFormatter.isWatched(it, favoriteTeamIds, favoriteLeagueIds) }
+    }
+    val featured = remember(matches, favoriteTeamIds, favoriteLeagueIds) {
+        matches.firstOrNull { it.status == "LIVE" && (it.homeTeamId in favoriteTeamIds || it.awayTeamId in favoriteTeamIds || it.leagueId in favoriteLeagueIds) }
+            ?: matches.firstOrNull { it.status == "LIVE" }
+            ?: matches.firstOrNull { it.status == "SCHEDULED" && (it.homeTeamId in favoriteTeamIds || it.awayTeamId in favoriteTeamIds || it.leagueId in favoriteLeagueIds) }
+            ?: matches.firstOrNull { it.status == "SCHEDULED" }
+            ?: matches.firstOrNull()
+    }
+    val grouped = remember(visibleMatches, featured) {
+        SportsMapper.groupMatchesByLeague(visibleMatches.filterNot { it.id == featured?.id })
+    }
+    val leagueShortcuts = remember(favoriteLeagues, allLeagues) { (favoriteLeagues + allLeagues).distinctBy { it.id }.take(8) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (matches.isNotEmpty()) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+    PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text(if (selectedOffset == 0) "فوتبال امروز" else "مسابقات این روز", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text("${matches.size} مسابقه", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                        Text(if (selectedOffset == 0) "فوتبال امروز" else "مسابقات این روز", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                        Text("${matches.size} مسابقه · $liveCount زنده · $finishedCount پایان‌یافته", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (liveCount > 0) LiveMetric(liveCount.toString(), "زنده")
-                        LiveMetric(finishedCount.toString(), "تمام‌شده")
+                    if (liveCount > 0) Surface(shape = RoundedCornerShape(12.dp), color = LiveRed.copy(alpha = 0.12f)) {
+                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PulseDot(size = 7.dp)
+                            Text("زنده", color = LiveRed, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                        }
                     }
                 }
             }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(viewModel.datesList) { (label, offset) ->
+                        FilterChip(
+                            selected = selectedOffset == offset,
+                            onClick = { viewModel.selectDate(offset) },
+                            label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
+            }
+            featured?.let { match ->
+                item(key = "featured-${match.id}") {
+                    FeaturedHomeMatch(match, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague) {
+                        viewModel.toggleMatchFavorite(match.id, match.isFavorite)
+                    }
+                }
+            }
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    HomeSectionTitle("مسابقات", "برنامه و نتایج")
+                    FilterChip(selected = onlyFavorites, onClick = { onlyFavorites = !onlyFavorites }, label = { Text("محبوب‌ها") })
+                }
+            }
+            if (visibleMatches.isEmpty()) {
+                item { EmptyState(if (onlyFavorites) "مسابقه‌ای از محبوب‌ها در این روز نیست." else "مسابقه‌ای برای این روز پیدا نشد.") }
+            } else {
+                grouped.forEach { (league, leagueMatches) ->
+                    item(key = "home-league-${league.id}-${league.name}") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable(enabled = league.id.isNotBlank()) { onNavigateToLeague(league.id) }.padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (league.logo.isNotBlank()) AsyncImage(league.logo, league.name, modifier = Modifier.size(20.dp))
+                            Text(league.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        }
+                    }
+                    items(leagueMatches, key = { "home-match-${it.id}" }) { match ->
+                        MatchCard(
+                            match = match,
+                            showLeague = false,
+                            compact = compactCards,
+                            onClick = { onNavigateToMatch(match.id) },
+                            onFavoriteToggle = { viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
+                            onHomeTeamClick = { onNavigateToTeam(match.homeTeamId) },
+                            onAwayTeamClick = { onNavigateToTeam(match.awayTeamId) },
+                            onLeagueClick = { onNavigateToLeague(match.leagueId) }
+                        )
+                    }
+                }
+            }
+            if (leagueShortcuts.isNotEmpty()) {
+                item { HomeSectionTitle("لیگ‌های منتخب", "دسترسی سریع") }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(leagueShortcuts, key = { "shortcut-${it.id}" }) { league ->
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.width(104.dp).clickable { onNavigateToLeague(league.id) }
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    AsyncImage(league.logo, league.name, modifier = Modifier.size(38.dp))
+                                    Text(league.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            favoriteTeams.firstOrNull()?.let { team ->
+                item { HomeSectionTitle("تیم محبوب", "نمای سریع باشگاه") }
+                item { FavoriteTeamHomeCard(team, onNavigateToTeam) }
+            }
+            if (favoritePlayers.isNotEmpty()) {
+                item { HomeSectionTitle("بازیکنان محبوب", "عملکرد فصل") }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(favoritePlayers.take(8), key = { "home-player-${it.id}" }) { player ->
+                            FavoritePlayerHomeCard(player) { onNavigateToPlayer(player.id) }
+                        }
+                    }
+                }
+            }
+            if (news.isNotEmpty()) {
+                item { HomeSectionTitle("تازه‌ترین خبرها", "خلاصه کوتاه") }
+                items(news.distinctBy { it.title }.take(3), key = { "home-news-${it.id}" }) { article ->
+                    HomeNewsCard(article)
+                }
+            }
+            item { Spacer(Modifier.height(12.dp)) }
         }
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 10.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    }
+}
+
+@Composable
+private fun HomeSectionTitle(title: String, subtitle: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun FeaturedHomeMatch(
+    match: MatchEntity,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit,
+    onFavoriteToggle: () -> Unit
+) {
+    val live = match.status == "LIVE"
+    val score = if (match.status == "SCHEDULED") match.time.ifBlank { "– : –" } else "${match.homeScore}  -  ${match.awayScore}"
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth().border(1.dp, if (live) LiveRed.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp)).clickable { onNavigateToMatch(match.id) }
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth().background(
+                Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), Color.Transparent))
+            )
         ) {
-            items(viewModel.datesList) { (label, offset) ->
-                val isSelected = selectedOffset == offset
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { viewModel.selectDate(offset) },
-                    label = { Text(label, style = MaterialTheme.typography.labelLarge) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        labelColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
+            Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row(
+                        modifier = Modifier.clickable(enabled = match.leagueId.isNotBlank()) { onNavigateToLeague(match.leagueId) },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (match.leagueLogo.isNotBlank()) AsyncImage(match.leagueLogo, match.leagueName, modifier = Modifier.size(22.dp))
+                        Text(match.leagueName, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (live) {
+                            PulseDot(size = 7.dp)
+                            Text(match.liveTime.ifBlank { "زنده" }, color = LiveRed, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        } else {
+                            Text(match.date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        }
+                        IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(40.dp)) {
+                            Icon(if (match.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "محبوب", tint = if (match.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    HomeFeaturedTeam(match.homeTeamName, match.homeTeamLogo, Modifier.weight(1f)) { onNavigateToTeam(match.homeTeamId) }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(score, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = if (live) LiveRed else MaterialTheme.colorScheme.onSurface)
+                        Text(if (match.status == "SCHEDULED") "ساعت شروع" else match.statusTitle.ifBlank { if (live) "در جریان" else "پایان" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    }
+                    HomeFeaturedTeam(match.awayTeamName, match.awayTeamLogo, Modifier.weight(1f)) { onNavigateToTeam(match.awayTeamId) }
+                }
             }
         }
+    }
+}
 
-        GroupedMatchList(
-            matches = matches,
-            isRefreshing = isRefreshing,
-            emptyMessage = if (onlyFavorites) "مسابقه‌ای از علاقه‌مندی‌ها در این روز نیست." else "هیچ مسابقه‌ای برای این تاریخ برنامه‌ریزی نشده است.",
-            onlyFavorites = onlyFavorites,
-            favoriteTeamIds = favoriteTeams.map { it.id }.toSet(),
-            favoriteLeagueIds = favoriteLeagues.map { it.id }.toSet(),
-            onRefresh = { viewModel.refresh() },
-            onMatchClick = onNavigateToMatch,
-            onTeamClick = onNavigateToTeam,
-            onLeagueClick = onNavigateToLeague,
-            onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
-            onOnlyFavoritesChange = { onlyFavorites = it },
-            compactCards = compactCards
-        )
+@Composable
+private fun HomeFeaturedTeam(name: String, logo: String, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier = modifier.clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.size(62.dp)) {
+            AsyncImage(logo, name, modifier = Modifier.padding(9.dp).fillMaxSize())
+        }
+        Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun FavoriteTeamHomeCard(team: TeamEntity, onNavigateToTeam: (String) -> Unit) {
+    Card(
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth().clickable { onNavigateToTeam(team.id) }
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.size(58.dp)) {
+                AsyncImage(team.logo, team.name, modifier = Modifier.padding(8.dp).fillMaxSize())
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(team.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(team.leagueName.ifBlank { "باشگاه محبوب شما" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HomeTeamMetric(if (team.rank > 0) "${team.rank}" else "–", "رتبه")
+                HomeTeamMetric("${team.points}", "امتیاز")
+                HomeTeamMetric("${team.won}", "برد")
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeTeamMetric(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun FavoritePlayerHomeCard(player: PlayerEntity, onClick: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.width(132.dp).clickable(onClick = onClick)
+    ) {
+        Column(modifier = Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(58.dp)) {
+                AsyncImage(player.portrait.ifBlank { player.teamLogo }, player.name, contentScale = ContentScale.Crop)
+            }
+            Text(player.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+            Text(player.teamName, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            Text("${player.goals} گل", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+@Composable
+private fun HomeNewsCard(article: NewsEntity) {
+    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (article.imageUrl.isNotBlank()) {
+                AsyncImage(article.imageUrl, article.title, contentScale = ContentScale.Crop, modifier = Modifier.size(76.dp).clip(RoundedCornerShape(13.dp)))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(article.title, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text("${article.source} · ${article.date}", maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            }
+        }
     }
 }
 
