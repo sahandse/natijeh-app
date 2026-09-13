@@ -145,7 +145,7 @@ fun MatchDetailScreen(
                     onAwayTeamClick = { onNavigateToTeam(m.awayTeamId) },
                     onLeagueClick = { onNavigateToLeague(m.leagueId) }
                 )
-                if (m.status == "LIVE") {
+                if (m.status == "LIVE" || m.status == "FINISHED") {
                     val streams = remember(m) { OfficialStreamResolver.forMatch(m) }
                     LazyRow(
                         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
@@ -159,7 +159,7 @@ fun MatchDetailScreen(
                                 modifier = Modifier.clickable { onNavigateToStream(m.id, stream.id) }
                             ) {
                                 Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = LiveRed, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = if (m.status == "LIVE") LiveRed else MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                     Column {
                                         Text(stream.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
                                         Text(stream.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
