@@ -258,5 +258,6 @@ data class NotificationHistoryEntity(
     val title: String,
     val body: String,
     val kind: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val isRead: Boolean = false
 )

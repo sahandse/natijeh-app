@@ -10,6 +10,7 @@ class ThemeModeTest {
     fun fromStorage_readsKnownValues() {
         assertEquals(ThemeMode.LIGHT, ThemeMode.fromStorage("LIGHT"))
         assertEquals(ThemeMode.DARK, ThemeMode.fromStorage("DARK"))
+        assertEquals(ThemeMode.AMOLED, ThemeMode.fromStorage("AMOLED"))
         assertEquals(ThemeMode.SYSTEM, ThemeMode.fromStorage("SYSTEM"))
     }
 
@@ -24,6 +25,7 @@ class ThemeModeTest {
     fun isDark_followsModeAndSystem() {
         assertFalse(ThemeMode.LIGHT.isDark(systemDark = true))
         assertTrue(ThemeMode.DARK.isDark(systemDark = false))
+        assertTrue(ThemeMode.AMOLED.isDark(systemDark = false))
         assertTrue(ThemeMode.SYSTEM.isDark(systemDark = true))
         assertFalse(ThemeMode.SYSTEM.isDark(systemDark = false))
     }

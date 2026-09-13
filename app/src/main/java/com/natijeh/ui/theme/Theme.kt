@@ -33,6 +33,24 @@ private val DarkColorScheme = darkColorScheme(
     secondaryContainer = Color(0xFF1A1A1A)
 )
 
+private val AmoledColorScheme = darkColorScheme(
+    primary = DarkPrimary,
+    onPrimary = DarkOnPrimary,
+    secondary = DarkSecondary,
+    onSecondary = DarkOnSecondary,
+    tertiary = DarkTertiary,
+    background = AmoledBackground,
+    onBackground = DarkOnBackground,
+    surface = AmoledSurface,
+    onSurface = DarkOnSurface,
+    surfaceVariant = AmoledSurfaceAlt,
+    onSurfaceVariant = DarkMuted,
+    outline = Color(0xFF303030),
+    outlineVariant = Color(0xFF1B1B1B),
+    error = LiveRed,
+    secondaryContainer = Color(0xFF101010)
+)
+
 private val LightColorScheme = lightColorScheme(
     primary = LightPrimary,
     onPrimary = LightOnPrimary,
@@ -66,7 +84,11 @@ fun NatijehTheme(
 ) {
     val systemDark = isSystemInDarkTheme()
     val darkTheme = themeMode.isDark(systemDark)
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = when {
+        themeMode == ThemeMode.AMOLED -> AmoledColorScheme
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

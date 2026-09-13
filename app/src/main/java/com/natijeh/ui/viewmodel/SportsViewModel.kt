@@ -28,8 +28,13 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
         val checkingUpdate: Boolean = false,
         val updateMessage: String? = null,
         val updateUrl: String? = null,
+        val updateVersion: String? = null,
+        val updateDownloading: Boolean = false,
+        val updateProgress: Int? = null,
+        val updateApkUri: String? = null,
         val downloading: Boolean = false,
-        val downloadMessage: String? = null
+        val downloadMessage: String? = null,
+        val downloadProgress: Int? = null
     )
 
     private val _maintenance = MutableStateFlow(MaintenanceState())
@@ -151,12 +156,15 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
         viewModelScope.launch {
             _maintenance.value = _maintenance.value.copy(checkingUpdate = true, updateMessage = null)
             try {
-                val (latest, url) = repository.latestRelease()
-                val newer = compareVersions(latest, BuildConfig.VERSION_NAME) > 0
+                val release = repository.latestRelease()
+                val newer = compareVersions(release.version, BuildConfig.VERSION_NAME) > 0
                 _maintenance.value = _maintenance.value.copy(
                     checkingUpdate = false,
-                    updateMessage = if (newer) "نسخه $latest آماده دانلود است" else "آخرین نسخه نصب است",
-                    updateUrl = if (newer) url else null
+                    updateMessage = if (newer) "نسخه ${release.version} آماده دانلود است" else "آخرین نسخه نصب است",
+                    updateUrl = if (newer) release.apkUrl else null,
+                    updateVersion = if (newer) release.version else null,
+                    updateProgress = null,
+                    updateApkUri = null
                 )
             } catch (_: Exception) {
                 _maintenance.value = _maintenance.value.copy(checkingUpdate = false, updateMessage = "بررسی نسخه ناموفق بود")
@@ -164,15 +172,45 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
         }
     }
 
+    fun downloadUpdate() {
+        val url = _maintenance.value.updateUrl ?: return
+        val version = _maintenance.value.updateVersion ?: return
+        viewModelScope.launch {
+            _maintenance.value = _maintenance.value.copy(updateDownloading = true, updateProgress = 0, updateMessage = "در حال دانلود نسخه $version")
+            try {
+                val uri = repository.downloadUpdateApk(version, url) { progress ->
+                    _maintenance.value = _maintenance.value.copy(updateProgress = progress)
+                }
+                _maintenance.value = _maintenance.value.copy(updateDownloading = false, updateProgress = 100, updateApkUri = uri.toString(), updateMessage = "دانلود کامل شد؛ برای نصب بزنید")
+            } catch (_: Exception) {
+                _maintenance.value = _maintenance.value.copy(updateDownloading = false, updateProgress = null, updateMessage = "دانلود نسخه ناموفق بود")
+            }
+        }
+    }
+
     fun downloadOfflineData() {
         viewModelScope.launch {
-            _maintenance.value = _maintenance.value.copy(downloading = true, downloadMessage = "در حال دریافت داده و تصاویر…")
+            _maintenance.value = _maintenance.value.copy(downloading = true, downloadMessage = "در حال دریافت داده و تصاویر…", downloadProgress = 0)
             try {
-                val count = repository.downloadOfflineData()
-                _maintenance.value = _maintenance.value.copy(downloading = false, downloadMessage = "$count تصویر و تازه‌ترین داده‌ها ذخیره شد")
+                val count = repository.downloadOfflineData { progress ->
+                    _maintenance.value = _maintenance.value.copy(downloadProgress = progress)
+                }
+                _maintenance.value = _maintenance.value.copy(downloading = false, downloadProgress = 100, downloadMessage = "$count تصویر و تازه‌ترین داده‌ها ذخیره شد")
             } catch (_: Exception) {
-                _maintenance.value = _maintenance.value.copy(downloading = false, downloadMessage = "دانلود کامل نشد؛ اتصال اینترنت را بررسی کنید")
+                _maintenance.value = _maintenance.value.copy(downloading = false, downloadProgress = null, downloadMessage = "دانلود کامل نشد؛ اتصال اینترنت را بررسی کنید")
             }
+        }
+    }
+
+    fun clearOfflineImages() {
+        viewModelScope.launch {
+            runCatching { repository.clearOfflineImages() }
+                .onSuccess {
+                    _maintenance.value = _maintenance.value.copy(downloadMessage = "حافظه تصاویر آفلاین پاک شد")
+                }
+                .onFailure {
+                    _maintenance.value = _maintenance.value.copy(downloadMessage = "پاک‌کردن حافظه تصاویر ناموفق بود")
+                }
         }
     }
 
@@ -200,6 +238,14 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
 
     fun togglePlayerFavorite(id: String, isFavorite: Boolean) {
         viewModelScope.launch { repository.setPlayerFavorite(id, !isFavorite) }
+    }
+
+    fun markNotificationRead(id: String) {
+        viewModelScope.launch { repository.markNotificationRead(id) }
+    }
+
+    fun markAllNotificationsRead() {
+        viewModelScope.launch { repository.markAllNotificationsRead() }
     }
 
     fun getMatchFlow(id: String) = repository.getMatchByIdFlow(id)

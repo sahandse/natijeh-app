@@ -58,6 +58,7 @@ import com.natijeh.data.model.FixtureRound
 import com.natijeh.data.model.ScorerRow
 import com.natijeh.data.model.StandingRow
 import com.natijeh.ui.theme.LiveRed
+import com.natijeh.ui.theme.NatijehGreen
 import com.natijeh.ui.theme.RankGold
 import com.natijeh.ui.theme.RankSilver
 import com.natijeh.ui.theme.natijehCardElevation
@@ -143,6 +144,9 @@ fun LeagueDetailScreen(
                             if (l.country.isNotBlank()) {
                                 Text(l.country, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             }
+                            standings.firstOrNull()?.let { leader ->
+                                Text("صدرنشین: ${leader.teamName} · ${leader.points} امتیاز", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 LeagueBadge("${standings.size} تیم")
@@ -202,6 +206,13 @@ private fun StandingsTab(standings: List<StandingRow>, onNavigateToTeam: (String
         return
     }
     Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            StandingLegend(NatijehGreen, "سهمیه")
+            StandingLegend(LiveRed, "سقوط")
+        }
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(12.dp),
@@ -223,10 +234,10 @@ private fun StandingsTab(standings: List<StandingRow>, onNavigateToTeam: (String
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(standings, key = { it.teamId }) { row ->
-                val rankBar = when (row.rank) {
-                    1 -> MaterialTheme.colorScheme.primary
-                    2 -> RankGold
-                    3 -> RankSilver
+                val relegationStart = (standings.size - 1).coerceAtLeast(1)
+                val rankBar = when {
+                    row.rank <= 4 -> NatijehGreen
+                    row.rank >= relegationStart -> LiveRed
                     else -> MaterialTheme.colorScheme.outline.copy(alpha = 0f)
                 }
                 Card(
@@ -275,6 +286,14 @@ private fun StandingsTab(standings: List<StandingRow>, onNavigateToTeam: (String
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StandingLegend(color: androidx.compose.ui.graphics.Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
     }
 }
 

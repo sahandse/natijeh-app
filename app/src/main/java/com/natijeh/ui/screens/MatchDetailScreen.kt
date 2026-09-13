@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -120,6 +122,16 @@ fun MatchDetailScreen(
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت")
                     }
                 },
+                actions = {
+                    match?.let { current ->
+                        IconButton(onClick = { sportsViewModel.toggleMatchFavorite(current.id, current.isFavorite) }) {
+                            Icon(
+                                imageVector = if (current.isFavorite) Icons.Outlined.Notifications else Icons.Outlined.NotificationsNone,
+                                contentDescription = if (current.isFavorite) "اعلان مسابقه فعال است" else "فعال‌کردن اعلان مسابقه"
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
@@ -141,6 +153,14 @@ fun MatchDetailScreen(
                     onAwayTeamClick = { onNavigateToTeam(m.awayTeamId) },
                     onLeagueClick = { onNavigateToLeague(m.leagueId) }
                 )
+                val topPerformer = remember(m.lineupsJson) {
+                    lineupsAdapter.fromJson(m.lineupsJson)?.let { lineups ->
+                        (lineups.homeStarting + lineups.awayStarting).filter { it.rating > 0.0 }.maxByOrNull { it.rating }
+                    }
+                }
+                topPerformer?.let { player ->
+                    TopPerformerBanner(player, onNavigateToPlayer)
+                }
                 ScrollableTabRow(
                     selectedTabIndex = when (selectedTab) {
                         "timeline" -> 0
@@ -274,6 +294,14 @@ fun MatchHeaderCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
+                if (match.date.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        listOf(match.date, match.time).filter { it.isNotBlank() }.joinToString(" · "),
+                        color = colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
             }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -303,6 +331,26 @@ fun MatchHeaderCard(
 }
 
 @Composable
+private fun TopPerformerBanner(player: PlayerLineup, onNavigateToPlayer: (String) -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clickable(enabled = player.playerId.isNotBlank()) { onNavigateToPlayer(player.playerId) },
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (player.portrait.isNotBlank()) {
+                AsyncImage(model = player.portrait, contentDescription = player.name, modifier = Modifier.size(36.dp).clip(CircleShape))
+            }
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                Text("بازیکن برتر", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(player.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+            }
+            Text(String.format("%.1f", player.rating), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+        }
+    }
+}
+
+@Composable
 fun TimelineTab(events: List<MatchEvent>, onNavigateToPlayer: (String) -> Unit = {}) {
     if (events.isEmpty()) {
         EmptyState(message = "رویداد خاصی در این بازی ثبت نشده است.")
@@ -310,7 +358,7 @@ fun TimelineTab(events: List<MatchEvent>, onNavigateToPlayer: (String) -> Unit =
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             items(events.reversed()) { event ->
                 val cardColor = if (event.isHome) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
-                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = cardColor), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = cardColor), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                             EventMark(event)
@@ -655,6 +703,13 @@ fun H2HTab(h2h: HeadToHeadData, homeTeam: String, awayTeam: String) {
                             Text("${h2h.awayWins}", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                             Text(awayTeam, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    val total = (h2h.homeWins + h2h.awayWins + h2h.draws).coerceAtLeast(1)
+                    Row(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape)) {
+                        Box(Modifier.weight(h2h.homeWins.coerceAtLeast(0).toFloat() / total.toFloat() + 0.01f).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+                        Box(Modifier.weight(h2h.draws.coerceAtLeast(0).toFloat() / total.toFloat() + 0.01f).fillMaxHeight().background(MaterialTheme.colorScheme.onSurfaceVariant))
+                        Box(Modifier.weight(h2h.awayWins.coerceAtLeast(0).toFloat() / total.toFloat() + 0.01f).fillMaxHeight().background(LiveRed))
                     }
                 }
             }

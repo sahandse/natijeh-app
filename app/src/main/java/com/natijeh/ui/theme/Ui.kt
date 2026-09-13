@@ -15,8 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -42,5 +45,23 @@ fun PulseDot(color: Color = LiveRed, size: Dp = 7.dp) {
             .size(size)
             .clip(CircleShape)
             .background(color.copy(alpha = alpha))
+    )
+}
+
+fun Modifier.shimmer(): Modifier = composed {
+    val transition = rememberInfiniteTransition(label = "skeleton-shimmer")
+    val progress by transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(tween(1_200, easing = NatijehMotion.emphasized)),
+        label = "skeleton-progress"
+    )
+    val base = MaterialTheme.colorScheme.surfaceVariant
+    background(
+        Brush.linearGradient(
+            colors = listOf(base.copy(alpha = 0.55f), base, base.copy(alpha = 0.55f)),
+            start = Offset(progress * 500f, 0f),
+            end = Offset(progress * 500f + 220f, 220f)
+        )
     )
 }

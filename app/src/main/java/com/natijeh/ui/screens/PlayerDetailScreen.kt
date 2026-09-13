@@ -93,6 +93,7 @@ fun PlayerDetailScreen(
                     }
                 )
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("عملکرد فصل", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         PlayerMetric("گل", p.goals.toString(), Modifier.weight(1f))
                         PlayerMetric("سن", if (p.age > 0) p.age.toString() else "—", Modifier.weight(1f))
@@ -102,6 +103,15 @@ fun PlayerDetailScreen(
                     if (p.country.isNotBlank()) {
                         PlayerFact("ملیت", p.country)
                     }
+                    if (p.teamName.isNotBlank()) {
+                        PlayerFact("باشگاه", p.teamName)
+                    }
+                    Text(
+                        "آمار براساس آخرین داده منتشرشده رقابت‌ها نمایش داده می‌شود.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
         } ?: run {
@@ -173,7 +183,10 @@ private fun PlayerHeader(
         Spacer(modifier = Modifier.height(14.dp))
         Text(player.name, color = colors.onSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         if (player.position.isNotBlank()) {
-            Text(player.position, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                PlayerHeaderBadge(player.position)
+                if (player.country.isNotBlank()) PlayerHeaderBadge(player.country)
+            }
         }
         if (player.teamName.isNotBlank()) {
             Spacer(modifier = Modifier.height(12.dp))
@@ -188,6 +201,13 @@ private fun PlayerHeader(
                 Text(player.teamName, color = colors.primary, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Composable
+private fun PlayerHeaderBadge(text: String) {
+    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.background.copy(alpha = 0.72f)) {
+        Text(text, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
 }
 

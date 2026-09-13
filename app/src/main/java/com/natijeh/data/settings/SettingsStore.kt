@@ -11,11 +11,11 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore by preferencesDataStore(name = "natijeh_settings")
 
 enum class ThemeMode {
-    LIGHT, DARK, SYSTEM;
+    LIGHT, DARK, AMOLED, SYSTEM;
 
     fun isDark(systemDark: Boolean): Boolean = when (this) {
         LIGHT -> false
-        DARK -> true
+        DARK, AMOLED -> true
         SYSTEM -> systemDark
     }
 

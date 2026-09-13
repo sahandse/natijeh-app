@@ -12,6 +12,7 @@ import com.natijeh.MainActivity
 import com.natijeh.NatijehApp
 import com.natijeh.R
 import com.natijeh.data.repository.SportsRepository
+import com.natijeh.data.notify.GoalNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,20 +41,27 @@ class NatijehScoreWidget : AppWidgetProvider() {
 
         private fun bind(context: Context, snapshot: SportsRepository.WidgetSnapshot?): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.natijeh_widget)
+            val match = snapshot?.match
+            val launchIntent = Intent(context, MainActivity::class.java).apply {
+                match?.id?.let { putExtra(GoalNotifier.EXTRA_MATCH_ID, it) }
+            }
             val launch = PendingIntent.getActivity(
                 context,
-                0,
-                Intent(context, MainActivity::class.java),
+                match?.id?.hashCode() ?: 0,
+                launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_root, launch)
-            val match = snapshot?.match
             if (match == null) {
                 views.setTextViewText(R.id.widget_status, context.getString(R.string.widget_empty))
+                views.setTextViewText(R.id.widget_league, context.getString(R.string.app_name))
+                views.setTextViewText(R.id.widget_date, "")
                 views.setViewVisibility(R.id.widget_score_row, View.GONE)
                 return views
             }
             views.setViewVisibility(R.id.widget_score_row, View.VISIBLE)
+            views.setTextViewText(R.id.widget_league, match.leagueName)
+            views.setTextViewText(R.id.widget_date, match.date)
             views.setTextViewText(R.id.widget_home, match.homeTeamName)
             views.setTextViewText(R.id.widget_away, match.awayTeamName)
             val score = if (match.status == "SCHEDULED") "- : -" else "${match.homeScore} : ${match.awayScore}"
@@ -61,7 +69,7 @@ class NatijehScoreWidget : AppWidgetProvider() {
             val status = when {
                 snapshot.live || match.status == "LIVE" -> "زنده ${match.liveTime}"
                 match.status == "FINISHED" -> match.statusTitle.ifBlank { "پایان" }
-                else -> match.time.ifBlank { match.date }
+                else -> listOf(match.date, match.time).filter { it.isNotBlank() }.joinToString(" · ")
             }
             views.setTextViewText(R.id.widget_status, status)
             return views

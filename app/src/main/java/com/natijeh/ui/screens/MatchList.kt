@@ -1,11 +1,9 @@
 package com.natijeh.ui.screens
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -144,7 +142,6 @@ fun GroupedMatchList(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MatchCard(
     match: MatchEntity,
@@ -175,7 +172,7 @@ fun MatchCard(
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
-            .combinedClickable(onClick = onClick, onLongClick = onFavoriteToggle)
+            .clickable(onClick = onClick)
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             if (live) {
@@ -256,16 +253,14 @@ fun MatchCard(
                     modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Icon(
-                        imageVector = if (match.isFavorite) Icons.Outlined.Notifications else Icons.Outlined.NotificationsNone,
-                        contentDescription = if (match.isFavorite) "اعلان این بازی فعال است" else "فعال‌کردن اعلان این بازی",
-                        tint = if (match.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable(onClick = onFavoriteToggle)
-                            .padding(6.dp)
-                            .size(17.dp)
-                    )
+                    androidx.compose.material3.IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(42.dp)) {
+                        Icon(
+                            imageVector = if (match.isFavorite) Icons.Outlined.Notifications else Icons.Outlined.NotificationsNone,
+                            contentDescription = if (match.isFavorite) "اعلان این بازی فعال است" else "فعال‌کردن اعلان این بازی",
+                            tint = if (match.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
                 }
             }
         }

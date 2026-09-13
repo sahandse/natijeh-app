@@ -1,8 +1,10 @@
 package com.natijeh.data.repository
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.util.Xml
+import androidx.core.content.FileProvider
 import coil.ImageLoader
 import coil.request.ImageRequest
 import com.natijeh.data.local.SportsDao
@@ -41,6 +43,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import java.util.UUID
+import java.io.File
+import java.io.FileOutputStream
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -90,6 +94,9 @@ class SportsRepository(
     val favoritePlayers: Flow<List<PlayerEntity>> = dao.getFavoritePlayers()
     val newsFeed: Flow<List<NewsEntity>> = dao.getAllNews()
     val notificationHistory: Flow<List<NotificationHistoryEntity>> = dao.getNotificationHistory()
+
+    suspend fun markNotificationRead(id: String) = dao.markNotificationRead(id)
+    suspend fun markAllNotificationsRead() = dao.markAllNotificationsRead()
 
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pollJob: Job? = null
@@ -167,8 +174,10 @@ class SportsRepository(
         }
     }
 
-    suspend fun downloadOfflineData(): Int = withContext(Dispatchers.IO) {
+    suspend fun downloadOfflineData(onProgress: (Int) -> Unit = {}): Int = withContext(Dispatchers.IO) {
+        onProgress(5)
         refreshAll(includeNews = true)
+        onProgress(20)
         val imageUrls = buildSet {
             dao.getAllTeams().first().forEach { add(it.logo) }
             dao.getAllLeagues().first().forEach { add(it.logo) }
@@ -177,13 +186,22 @@ class SportsRepository(
                 add(it.homeTeamLogo); add(it.awayTeamLogo); add(it.leagueLogo)
             }
         }.filter { it.startsWith("https://") }
-        imageUrls.forEach { url ->
+        imageUrls.forEachIndexed { index, url ->
             runCatching { imageLoader.execute(ImageRequest.Builder(appContext).data(url).build()) }
+            onProgress(20 + ((index + 1) * 80 / imageUrls.size.coerceAtLeast(1)))
         }
+        onProgress(100)
         imageUrls.size
     }
 
-    suspend fun latestRelease(): Pair<String, String> = withContext(Dispatchers.IO) {
+    suspend fun clearOfflineImages() = withContext(Dispatchers.IO) {
+        imageLoader.memoryCache?.clear()
+        imageLoader.diskCache?.clear()
+    }
+
+    data class ReleaseInfo(val version: String, val pageUrl: String, val apkUrl: String)
+
+    suspend fun latestRelease(): ReleaseInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("https://api.github.com/repos/sahandse/natijeh-app/releases/latest")
             .header("Accept", "application/vnd.github+json")
@@ -196,7 +214,35 @@ class SportsRepository(
                 ?: error("release tag missing")
             val url = Regex("\\\"html_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").find(json)?.groupValues?.get(1)
                 ?: error("release url missing")
-            tag.removePrefix("v") to url
+            val apkUrl = Regex("\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]+\\.apk)\\\"")
+                .find(json)?.groupValues?.get(1)
+                ?: error("APK asset missing")
+            ReleaseInfo(tag.removePrefix("v"), url, apkUrl)
+        }
+    }
+
+    suspend fun downloadUpdateApk(version: String, url: String, onProgress: (Int) -> Unit): Uri = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(url).header("User-Agent", "natijeh-android").build()
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("Download ${response.code}")
+            val body = response.body ?: error("Empty APK")
+            val total = body.contentLength()
+            val targetDir = File(appContext.cacheDir, "updates").apply { mkdirs() }
+            val target = File(targetDir, "natijeh-$version.apk")
+            body.byteStream().use { input ->
+                FileOutputStream(target).use { output ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var downloaded = 0L
+                    var read: Int
+                    while (input.read(buffer).also { read = it } != -1) {
+                        output.write(buffer, 0, read)
+                        downloaded += read
+                        if (total > 0) onProgress(((downloaded * 100) / total).toInt().coerceIn(0, 100))
+                    }
+                }
+            }
+            onProgress(100)
+            FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", target)
         }
     }
 
@@ -559,7 +605,10 @@ class SportsRepository(
         val upcoming = all
             .filter { it.status == "SCHEDULED" && (it.homeTeamId in favoriteIds || it.awayTeamId in favoriteIds) }
             .minByOrNull { it.utcStart.ifBlank { it.time } }
-        return WidgetSnapshot(upcoming, false)
+        val fallback = live.firstOrNull() ?: all
+            .filter { it.status == "SCHEDULED" }
+            .minByOrNull { it.utcStart.ifBlank { it.time } }
+        return WidgetSnapshot(upcoming ?: fallback, live = upcoming == null && fallback?.status == "LIVE")
     }
 
     suspend fun hasWatchedLiveMatches(): Boolean {

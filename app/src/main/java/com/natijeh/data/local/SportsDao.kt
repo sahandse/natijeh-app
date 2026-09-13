@@ -20,6 +20,12 @@ interface SportsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNotificationHistory(items: List<NotificationHistoryEntity>)
 
+    @Query("UPDATE notification_history SET isRead = 1 WHERE id = :id")
+    suspend fun markNotificationRead(id: String)
+
+    @Query("UPDATE notification_history SET isRead = 1")
+    suspend fun markAllNotificationsRead()
+
     @Query("SELECT * FROM matches ORDER BY utcStart ASC, time ASC")
     fun getAllMatches(): Flow<List<MatchEntity>>
 

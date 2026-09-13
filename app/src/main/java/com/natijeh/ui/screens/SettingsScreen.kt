@@ -1,5 +1,7 @@
 package com.natijeh.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +34,7 @@ import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,6 +42,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -46,7 +52,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,7 +78,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val maintenance by sportsViewModel.maintenance.collectAsStateWithLifecycle()
-    val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     val colors = MaterialTheme.colorScheme
 
     Scaffold(
@@ -194,26 +200,50 @@ fun SettingsScreen(
                 )
             }
 
-            SectionLabel("درباره")
+            SectionLabel("داده و فضای آفلاین")
             SettingsCard {
-                AboutRow("نسخه", BuildConfig.VERSION_NAME)
-                Hairline()
-                SettingAction(
-                    icon = Icons.Outlined.SystemUpdate,
-                    title = "بررسی بروزرسانی",
-                    subtitle = maintenance.updateMessage ?: "مرجع رسمی GitHub Releases",
-                    enabled = !maintenance.checkingUpdate,
-                    onClick = {
-                        maintenance.updateUrl?.let(uriHandler::openUri) ?: sportsViewModel.checkForUpdate()
-                    }
-                )
-                Hairline()
                 SettingAction(
                     icon = Icons.Outlined.CloudDownload,
                     title = "دانلود داده برای آفلاین",
                     subtitle = maintenance.downloadMessage ?: "داده‌ها و تصاویر عمومی را یک‌بار ذخیره کن",
                     enabled = !maintenance.downloading,
+                    progress = maintenance.downloadProgress,
                     onClick = sportsViewModel::downloadOfflineData
+                )
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.DeleteSweep,
+                    title = "پاک‌کردن تصاویر آفلاین",
+                    subtitle = "داده‌های مسابقات و علاقه‌مندی‌ها باقی می‌مانند",
+                    enabled = !maintenance.downloading,
+                    onClick = sportsViewModel::clearOfflineImages
+                )
+            }
+
+            SectionLabel("درباره و بروزرسانی")
+            SettingsCard {
+                AboutRow("نسخه نصب‌شده", BuildConfig.VERSION_NAME)
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.SystemUpdate,
+                    title = "بررسی بروزرسانی",
+                    subtitle = maintenance.updateMessage ?: "مرجع رسمی GitHub Releases",
+                    enabled = !maintenance.checkingUpdate && !maintenance.updateDownloading,
+                    progress = maintenance.updateProgress,
+                    onClick = {
+                        when {
+                            maintenance.updateApkUri != null -> runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(Uri.parse(maintenance.updateApkUri), "application/vnd.android.package-archive")
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                )
+                            }
+                            maintenance.updateUrl != null -> sportsViewModel.downloadUpdate()
+                            else -> sportsViewModel.checkForUpdate()
+                        }
+                    }
                 )
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -227,6 +257,7 @@ private fun SettingAction(
     title: String,
     subtitle: String,
     enabled: Boolean,
+    progress: Int? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -237,7 +268,19 @@ private fun SettingAction(
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text(
+                if (progress != null && progress in 0..99) "$subtitle · $progress٪" else subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+            if (progress != null && progress in 0..99) {
+                LinearProgressIndicator(
+                    progress = { progress / 100f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(4.dp).clip(CircleShape),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -312,38 +355,56 @@ private fun SectionLabel(text: String) {
 
 @Composable
 private fun ThemePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-        ThemePreviewCard(
-            modifier = Modifier.weight(1f),
-            title = "سیاه",
-            selected = selected == ThemeMode.DARK,
-            icon = Icons.Outlined.DarkMode,
-            canvas = Color(0xFF07090C),
-            card = Color(0xFF12161C),
-            accent = Color(0xFF1DB954),
-            onClick = { onSelect(ThemeMode.DARK) }
-        )
-        ThemePreviewCard(
-            modifier = Modifier.weight(1f),
-            title = "سفید",
-            selected = selected == ThemeMode.LIGHT,
-            icon = Icons.Outlined.LightMode,
-            canvas = Color(0xFFF7F4EE),
-            card = Color.White,
-            accent = Color(0xFF128A3E),
-            onClick = { onSelect(ThemeMode.LIGHT) }
-        )
-        ThemePreviewCard(
-            modifier = Modifier.weight(1f),
-            title = "سیستم",
-            selected = selected == ThemeMode.SYSTEM,
-            icon = Icons.Outlined.PhoneAndroid,
-            canvas = Color(0xFF07090C),
-            card = Color.White,
-            accent = Color(0xFF1DB954),
-            split = true,
-            onClick = { onSelect(ThemeMode.SYSTEM) }
-        )
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        item {
+            ThemePreviewCard(
+                modifier = Modifier.width(116.dp),
+                title = "تیره",
+                selected = selected == ThemeMode.DARK,
+                icon = Icons.Outlined.DarkMode,
+                canvas = Color(0xFF07090C),
+                card = Color(0xFF12161C),
+                accent = Color(0xFF1DB954),
+                onClick = { onSelect(ThemeMode.DARK) }
+            )
+        }
+        item {
+            ThemePreviewCard(
+                modifier = Modifier.width(116.dp),
+                title = "AMOLED",
+                selected = selected == ThemeMode.AMOLED,
+                icon = Icons.Outlined.DarkMode,
+                canvas = Color.Black,
+                card = Color(0xFF090909),
+                accent = Color.White,
+                onClick = { onSelect(ThemeMode.AMOLED) }
+            )
+        }
+        item {
+            ThemePreviewCard(
+                modifier = Modifier.width(116.dp),
+                title = "سفید",
+                selected = selected == ThemeMode.LIGHT,
+                icon = Icons.Outlined.LightMode,
+                canvas = Color(0xFFF7F4EE),
+                card = Color.White,
+                accent = Color(0xFF128A3E),
+                onClick = { onSelect(ThemeMode.LIGHT) }
+            )
+        }
+        item {
+            ThemePreviewCard(
+                modifier = Modifier.width(116.dp),
+                title = "سیستم",
+                selected = selected == ThemeMode.SYSTEM,
+                icon = Icons.Outlined.PhoneAndroid,
+                canvas = Color(0xFF07090C),
+                card = Color.White,
+                accent = Color(0xFF1DB954),
+                split = true,
+                onClick = { onSelect(ThemeMode.SYSTEM) }
+            )
+        }
     }
 }
 

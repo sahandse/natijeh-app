@@ -109,7 +109,7 @@ fun TeamDetailScreen(
     val team by viewModel.getTeamFlow(teamId).collectAsStateWithLifecycle(initialValue = null)
     val favoritePlayers by viewModel.favoritePlayers.collectAsStateWithLifecycle()
     val favoriteIds = remember(favoritePlayers) { favoritePlayers.map { it.id }.toSet() }
-    var selectedTab by remember { mutableStateOf("matches") }
+    var selectedTab by remember { mutableStateOf("overview") }
 
     LaunchedEffect(teamId) {
         viewModel.loadTeamDetails(teamId)
@@ -147,14 +147,18 @@ fun TeamDetailScreen(
                 )
                 ScrollableTabRow(
                     selectedTabIndex = when (selectedTab) {
-                        "matches" -> 0
-                        "squad" -> 1
-                        else -> 2
+                        "overview" -> 0
+                        "matches" -> 1
+                        "squad" -> 2
+                        else -> 3
                     },
                     containerColor = MaterialTheme.colorScheme.background,
                     contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = 16.dp
                 ) {
+                    Tab(selected = selectedTab == "overview", onClick = { selectedTab = "overview" }) {
+                        Text("نمای کلی", modifier = Modifier.padding(16.dp), color = if (selectedTab == "overview") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Tab(selected = selectedTab == "matches", onClick = { selectedTab = "matches" }) {
                         Text("بازی‌ها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "matches") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -166,6 +170,7 @@ fun TeamDetailScreen(
                     }
                 }
                 when (selectedTab) {
+                    "overview" -> TeamOverviewTab(t, recent, squad, onNavigateToMatch, onNavigateToPlayer)
                     "matches" -> TeamMatchesTab(teamId = t.id, matches = recent, onNavigateToMatch = onNavigateToMatch)
                     "squad" -> TeamSquadTab(
                         squad = squad,
@@ -181,6 +186,84 @@ fun TeamDetailScreen(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
+    }
+}
+
+@Composable
+private fun TeamOverviewTab(
+    team: TeamEntity,
+    matches: List<TeamResultMatch>,
+    squad: List<SquadPlayer>,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToPlayer: (String) -> Unit
+) {
+    val nextMatch = matches.firstOrNull { it.homeScore == null || it.awayScore == null || it.status == "SCHEDULED" }
+    val topScorer = squad.filter { it.goals > 0 }.maxByOrNull { it.goals }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        nextMatch?.let { match ->
+            item {
+                Text("بازی بعدی", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable(enabled = match.id.isNotBlank()) { onNavigateToMatch(match.id) },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(listOf(match.date, match.time).filter { it.isNotBlank() }.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(match.homeTeam, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            Text("—", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+                            Text(match.awayTeam, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                        }
+                        if (match.leagueName.isNotBlank()) Text(match.leagueName, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+        topScorer?.let { player ->
+            item {
+                Text("بازیکن کلیدی", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable(enabled = player.id.isNotBlank()) { onNavigateToPlayer(player.id) },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(52.dp)) {
+                            if (player.portrait.isNotBlank()) AsyncImage(model = player.portrait, contentDescription = player.name, modifier = Modifier.clip(CircleShape))
+                        }
+                        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(player.name, fontWeight = FontWeight.Bold)
+                            Text(player.position, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                        }
+                        Text("${player.goals} گل", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        item {
+            Text("اطلاعات باشگاه", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TeamInfoRow("مربی", team.coach.ifBlank { "—" })
+                    TeamInfoRow("ورزشگاه", team.stadium.ifBlank { "—" })
+                    TeamInfoRow("سال تأسیس", team.founded.ifBlank { "—" })
+                    TeamInfoRow("آرایش", team.formation.ifBlank { "—" })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeamInfoRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
     }
 }
 
