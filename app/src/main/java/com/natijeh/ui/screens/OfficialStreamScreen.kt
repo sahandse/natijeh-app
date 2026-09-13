@@ -27,6 +27,7 @@ private val allowedStreamHosts = setOf(
     "aparat.com", "www.aparat.com",
     "football360.ir", "www.football360.ir",
     "varzesh3.com", "www.varzesh3.com",
+    "video.varzesh3.com",
     "telewebion.net", "www.telewebion.net"
 )
 
