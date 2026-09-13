@@ -1,6 +1,7 @@
 package com.natijeh.data.model
 
-import android.net.Uri
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 data class OfficialStream(
     val id: String,
@@ -12,7 +13,10 @@ data class OfficialStream(
 object OfficialStreamResolver {
     fun forMatch(match: MatchEntity): List<OfficialStream> {
         if (match.status != "LIVE") return emptyList()
-        val query = Uri.encode("${match.homeTeamName} ${match.awayTeamName} پخش زنده")
+        val query = URLEncoder.encode(
+            "${match.homeTeamName} ${match.awayTeamName} پخش زنده",
+            StandardCharsets.UTF_8.toString()
+        )
         val providers = mutableListOf(
             OfficialStream("aparat", "آپارات", "جستجوی پخش رسمی مسابقه", "https://www.aparat.com/result/$query"),
             OfficialStream("football360", "فوتبال ۳۶۰", "بررسی صفحه پخش مسابقه", "https://football360.ir/search?q=$query"),
