@@ -3,6 +3,7 @@ package com.natijeh.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.natijeh.BuildConfig
 import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.LeagueEntity
 import com.natijeh.data.model.MatchEntity
@@ -22,6 +23,17 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
+
+    data class MaintenanceState(
+        val checkingUpdate: Boolean = false,
+        val updateMessage: String? = null,
+        val updateUrl: String? = null,
+        val downloading: Boolean = false,
+        val downloadMessage: String? = null
+    )
+
+    private val _maintenance = MutableStateFlow(MaintenanceState())
+    val maintenance: StateFlow<MaintenanceState> = _maintenance.asStateFlow()
 
     val datesList: List<Pair<String, Int>> = listOf(
         "۲ روز قبل" to -2,
@@ -133,6 +145,45 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
                 _isRefreshingNews.value = false
             }
         }
+    }
+
+    fun checkForUpdate() {
+        viewModelScope.launch {
+            _maintenance.value = _maintenance.value.copy(checkingUpdate = true, updateMessage = null)
+            try {
+                val (latest, url) = repository.latestRelease()
+                val newer = compareVersions(latest, BuildConfig.VERSION_NAME) > 0
+                _maintenance.value = _maintenance.value.copy(
+                    checkingUpdate = false,
+                    updateMessage = if (newer) "نسخه $latest آماده دانلود است" else "آخرین نسخه نصب است",
+                    updateUrl = if (newer) url else null
+                )
+            } catch (_: Exception) {
+                _maintenance.value = _maintenance.value.copy(checkingUpdate = false, updateMessage = "بررسی نسخه ناموفق بود")
+            }
+        }
+    }
+
+    fun downloadOfflineData() {
+        viewModelScope.launch {
+            _maintenance.value = _maintenance.value.copy(downloading = true, downloadMessage = "در حال دریافت داده و تصاویر…")
+            try {
+                val count = repository.downloadOfflineData()
+                _maintenance.value = _maintenance.value.copy(downloading = false, downloadMessage = "$count تصویر و تازه‌ترین داده‌ها ذخیره شد")
+            } catch (_: Exception) {
+                _maintenance.value = _maintenance.value.copy(downloading = false, downloadMessage = "دانلود کامل نشد؛ اتصال اینترنت را بررسی کنید")
+            }
+        }
+    }
+
+    private fun compareVersions(left: String, right: String): Int {
+        val a = left.split('.').map { it.toIntOrNull() ?: 0 }
+        val b = right.split('.').map { it.toIntOrNull() ?: 0 }
+        repeat(maxOf(a.size, b.size)) { index ->
+            val diff = a.getOrElse(index) { 0 }.compareTo(b.getOrElse(index) { 0 })
+            if (diff != 0) return diff
+        }
+        return 0
     }
 
     fun toggleMatchFavorite(id: String, isFavorite: Boolean) {
