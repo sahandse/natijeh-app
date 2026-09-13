@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,6 +25,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,35 +52,68 @@ fun FavoritesOnboardingScreen(
 ) {
     val teams by sportsViewModel.allTeams.collectAsStateWithLifecycle()
     val leagues by sportsViewModel.allLeagues.collectAsStateWithLifecycle()
+    val players by sportsViewModel.allPlayers.collectAsStateWithLifecycle()
     var section by remember { mutableStateOf("teams") }
-    val shown = if (section == "teams") {
-        teams.take(30).map { FavoriteChoice(it.id, it.name, it.logo, it.isFavorite) }
-    } else {
-        leagues.take(30).map { FavoriteChoice(it.id, it.name, it.logo, it.isFavorite) }
+    var query by remember { mutableStateOf("") }
+    val choices = when (section) {
+        "teams" -> teams.map { FavoriteChoice(it.id, it.name, it.logo, it.isFavorite) }
+        "leagues" -> leagues.map { FavoriteChoice(it.id, it.name, it.logo, it.isFavorite) }
+        else -> players.map { FavoriteChoice(it.id, it.name, it.portrait.ifBlank { it.teamLogo }, it.isFavorite) }
     }
+    val shown = choices.filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }.take(50)
 
     Column(modifier = Modifier.fillMaxSize().padding(top = 36.dp)) {
         Column(modifier = Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("فوتبال خودت را بساز", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("تیم‌ها و لیگ‌های موردعلاقه را انتخاب کن؛ بعداً بازیکنان را هم از صفحه هر تیم دنبال می‌کنی.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("تیم، لیگ و بازیکن‌های محبوبت را پیدا کن تا نتیجه برای خودت شخصی شود.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = section == "teams", onClick = { section = "teams" }, label = { Text("تیم‌ها") })
-                FilterChip(selected = section == "leagues", onClick = { section = "leagues" }, label = { Text("لیگ‌ها") })
+                FilterChip(selected = section == "teams", onClick = { section = "teams"; query = "" }, label = { Text("تیم‌ها") })
+                FilterChip(selected = section == "leagues", onClick = { section = "leagues"; query = "" }, label = { Text("لیگ‌ها") })
+                FilterChip(selected = section == "players", onClick = { section = "players"; query = "" }, label = { Text("بازیکن‌ها") })
             }
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                placeholder = {
+                    Text(when (section) {
+                        "teams" -> "جست‌وجوی تیم"
+                        "leagues" -> "جست‌وجوی لیگ"
+                        else -> "جست‌وجوی بازیکن"
+                    })
+                }
+            )
         }
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(shown, key = { it.id }) { item ->
+            if (shown.isEmpty()) {
+                item {
+                    Text(
+                        text = if (section == "players" && players.isEmpty())
+                            "بازیکن‌ها پس از دریافت اطلاعات مسابقات و ترکیب تیم‌ها اینجا نمایش داده می‌شوند."
+                        else "نتیجه‌ای برای «$query» پیدا نشد.",
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            items(shown, key = { "${section}_${it.id}" }) { item ->
                 val favorite = item.favorite
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier.fillMaxWidth().clickable {
-                        if (section == "teams") sportsViewModel.toggleTeamFavorite(item.id, favorite)
-                        else sportsViewModel.toggleLeagueFavorite(item.id, favorite)
+                        when (section) {
+                            "teams" -> sportsViewModel.toggleTeamFavorite(item.id, favorite)
+                            "leagues" -> sportsViewModel.toggleLeagueFavorite(item.id, favorite)
+                            else -> sportsViewModel.togglePlayerFavorite(item.id, favorite)
+                        }
                     }
                 ) {
                     Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -87,8 +122,11 @@ fun FavoritesOnboardingScreen(
                         }
                         Text(item.name, modifier = Modifier.weight(1f).padding(horizontal = 12.dp), fontWeight = FontWeight.SemiBold)
                         IconButton(onClick = {
-                            if (section == "teams") sportsViewModel.toggleTeamFavorite(item.id, favorite)
-                            else sportsViewModel.toggleLeagueFavorite(item.id, favorite)
+                            when (section) {
+                                "teams" -> sportsViewModel.toggleTeamFavorite(item.id, favorite)
+                                "leagues" -> sportsViewModel.toggleLeagueFavorite(item.id, favorite)
+                                else -> sportsViewModel.togglePlayerFavorite(item.id, favorite)
+                            }
                         }) {
                             Icon(if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = "انتخاب", tint = MaterialTheme.colorScheme.primary)
                         }
