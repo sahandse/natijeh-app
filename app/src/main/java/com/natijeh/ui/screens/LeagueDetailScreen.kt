@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -130,7 +131,7 @@ fun LeagueDetailScreen(
                     modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.20f), MaterialTheme.colorScheme.surface))).padding(18.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -141,6 +142,12 @@ fun LeagueDetailScreen(
                             Text(l.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             if (l.country.isNotBlank()) {
                                 Text(l.country, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                LeagueBadge("${standings.size} تیم")
+                                LeagueBadge("${scorers.size} گلزن")
+                                LeagueBadge("${fixtures.size} هفته")
                             }
                         }
                     }
@@ -178,6 +185,13 @@ fun LeagueDetailScreen(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
+    }
+}
+
+@Composable
+private fun LeagueBadge(text: String) {
+    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.background.copy(alpha = 0.75f)) {
+        Text(text, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
 }
 
