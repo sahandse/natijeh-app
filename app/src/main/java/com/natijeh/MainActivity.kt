@@ -110,6 +110,7 @@ class MainActivity : ComponentActivity() {
                             composable("settings") {
                                 SettingsScreen(
                                     viewModel = settingsViewModel,
+                                    sportsViewModel = sportsViewModel,
                                     onBack = { navController.popBackStack() }
                                 )
                             }
