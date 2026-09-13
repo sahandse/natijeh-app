@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -66,6 +69,7 @@ import com.natijeh.data.model.HeadToHeadData
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.MatchEvent
 import com.natijeh.data.model.MatchLineups
+import com.natijeh.data.model.OfficialStreamResolver
 import com.natijeh.data.model.PlayerLineup
 import com.natijeh.data.model.StatItem
 import com.natijeh.data.util.JalaliDate
@@ -96,7 +100,8 @@ fun MatchDetailScreen(
     onBack: () -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
-    onNavigateToPlayer: (String) -> Unit = {}
+    onNavigateToPlayer: (String) -> Unit = {},
+    onNavigateToStream: (String, String) -> Unit = { _, _ -> }
 ) {
     val match by sportsViewModel.getMatchFlow(matchId).collectAsStateWithLifecycle(initialValue = null)
     var selectedTab by remember { mutableStateOf("timeline") }
@@ -140,6 +145,30 @@ fun MatchDetailScreen(
                     onAwayTeamClick = { onNavigateToTeam(m.awayTeamId) },
                     onLeagueClick = { onNavigateToLeague(m.leagueId) }
                 )
+                if (m.status == "LIVE") {
+                    val streams = remember(m) { OfficialStreamResolver.forMatch(m) }
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(streams, key = { it.id }) { stream ->
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.clickable { onNavigateToStream(m.id, stream.id) }
+                            ) {
+                                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = LiveRed, modifier = Modifier.size(18.dp))
+                                    Column {
+                                        Text(stream.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                                        Text(stream.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 ScrollableTabRow(
                     selectedTabIndex = when (selectedTab) {
                         "timeline" -> 0

@@ -103,6 +103,7 @@ fun MainDashboard(
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
     onNavigateToPlayer: (String) -> Unit,
+    onNavigateToStream: (String, String) -> Unit,
     onNavigateToSettings: () -> Unit = {}
 ) {
     var activeTab by remember { mutableStateOf("today") }
@@ -290,7 +291,7 @@ fun MainDashboard(
             } else {
                 when (activeTab) {
                     "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
-                    "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
+                    "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards, onNavigateToStream)
                     "leagues" -> LeaguesTabContent(sportsViewModel, onNavigateToLeague)
                     "favorites" -> FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer)
                     else -> MoreTabContent(
@@ -372,7 +373,8 @@ fun LiveTabContent(
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
     isRefreshing: Boolean,
-    compactCards: Boolean = true
+    compactCards: Boolean = true,
+    onNavigateToStream: (String, String) -> Unit = { _, _ -> }
 ) {
     val liveMatches by viewModel.liveMatches.collectAsStateWithLifecycle()
     val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
@@ -380,21 +382,31 @@ fun LiveTabContent(
     var onlyFavorites by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
         if (liveMatches.isNotEmpty()) {
-            Row(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(LiveRed.copy(alpha = 0.1f))
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                PulseDot()
-                Text(
-                    text = "${liveMatches.size} بازی زنده",
-                    color = LiveRed,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            PulseDot(size = 9.dp)
+                            Text("همین حالا زنده", color = LiveRed, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        }
+                        Text("نتیجه و پخش رسمی مسابقات", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LiveMetric(liveMatches.size.toString(), "بازی")
+                        LiveMetric(liveMatches.count { it.isFavorite || it.homeTeamId in favoriteTeams.map { team -> team.id } || it.awayTeamId in favoriteTeams.map { team -> team.id } }.toString(), "محبوب")
+                    }
+                }
             }
         }
         GroupedMatchList(
@@ -410,8 +422,19 @@ fun LiveTabContent(
             onLeagueClick = onNavigateToLeague,
             onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
             onOnlyFavoritesChange = { onlyFavorites = it },
-            compactCards = compactCards
+            compactCards = compactCards,
+            onStreamClick = onNavigateToStream
         )
+    }
+}
+
+@Composable
+private fun LiveMetric(value: String, label: String) {
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
