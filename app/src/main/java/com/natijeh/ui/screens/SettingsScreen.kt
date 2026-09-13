@@ -29,6 +29,9 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
@@ -43,6 +46,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,14 +61,18 @@ import com.natijeh.data.settings.ThemeMode
 import com.natijeh.data.settings.CardDensity
 import com.natijeh.data.settings.NotificationPreset
 import com.natijeh.ui.viewmodel.SettingsViewModel
+import com.natijeh.ui.viewmodel.SportsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
+    sportsViewModel: SportsViewModel,
     onBack: () -> Unit
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val maintenance by sportsViewModel.maintenance.collectAsStateWithLifecycle()
+    val uriHandler = LocalUriHandler.current
     val colors = MaterialTheme.colorScheme
 
     Scaffold(
@@ -189,9 +197,49 @@ fun SettingsScreen(
             SectionLabel("درباره")
             SettingsCard {
                 AboutRow("نسخه", BuildConfig.VERSION_NAME)
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.SystemUpdate,
+                    title = "بررسی بروزرسانی",
+                    subtitle = maintenance.updateMessage ?: "مرجع رسمی GitHub Releases",
+                    enabled = !maintenance.checkingUpdate,
+                    onClick = {
+                        maintenance.updateUrl?.let(uriHandler::openUri) ?: sportsViewModel.checkForUpdate()
+                    }
+                )
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.CloudDownload,
+                    title = "دانلود داده برای آفلاین",
+                    subtitle = maintenance.downloadMessage ?: "داده‌ها و تصاویر عمومی را یک‌بار ذخیره کن",
+                    enabled = !maintenance.downloading,
+                    onClick = sportsViewModel::downloadOfflineData
+                )
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun SettingAction(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
