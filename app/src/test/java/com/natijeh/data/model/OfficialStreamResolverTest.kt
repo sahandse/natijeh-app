@@ -17,6 +17,14 @@ class OfficialStreamResolverTest {
         assertFalse(streams.any { !it.url.startsWith("https://") })
     }
 
+    @Test
+    fun finishedMatchOffersHighlightsInsteadOfLiveTv() {
+        val streams = OfficialStreamResolver.forMatch(match(status = "FINISHED"))
+        assertTrue(streams.any { it.id == "highlight-v3" })
+        assertTrue(streams.any { it.id == "highlight-360" })
+        assertFalse(streams.any { it.id == "tv3" })
+    }
+
     private fun match(status: String, league: String = "لالیگا") = MatchEntity(
         id = "1", homeTeamId = "1", homeTeamName = "استقلال", awayTeamId = "2", awayTeamName = "پرسپولیس",
         homeScore = 0, awayScore = 0, status = status, minute = 0, date = "", time = "", leagueId = "1",
