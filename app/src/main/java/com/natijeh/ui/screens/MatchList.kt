@@ -165,8 +165,8 @@ fun MatchCard(
     val live = match.status == "LIVE"
     val statusText = when (match.status) {
         "LIVE" -> match.liveTime.ifBlank { "${match.minute}'" }.ifBlank { "زنده" }
-        "FINISHED" -> match.statusTitle.ifBlank { "پایان" }
-        else -> match.time.ifBlank { match.date }
+        "FINISHED" -> listOf(match.statusTitle.ifBlank { "پایان" }, match.date).filter { it.isNotBlank() }.joinToString(" · ")
+        else -> listOf(match.date, match.time).filter { it.isNotBlank() }.joinToString(" · ")
     }
     val homeScore = if (match.status == "SCHEDULED") "–" else match.homeScore.toString()
     val awayScore = if (match.status == "SCHEDULED") "–" else match.awayScore.toString()
