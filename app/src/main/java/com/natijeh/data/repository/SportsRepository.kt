@@ -3,6 +3,8 @@ package com.natijeh.data.repository
 import android.content.Context
 import android.util.Log
 import android.util.Xml
+import coil.ImageLoader
+import coil.request.ImageRequest
 import com.natijeh.data.local.SportsDao
 import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.FixtureRound
@@ -39,6 +41,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import java.util.UUID
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 class SportsRepository(
     private val dao: SportsDao,
@@ -72,6 +76,8 @@ class SportsRepository(
         Types.newParameterizedType(List::class.java, FixtureRound::class.java)
     )
     private val notifier = GoalNotifier(appContext, settingsStore)
+    private val imageLoader = ImageLoader(appContext)
+    private val httpClient = OkHttpClient()
 
     val allMatches: Flow<List<MatchEntity>> = dao.getAllMatches()
     val liveMatches: Flow<List<MatchEntity>> = dao.getLiveMatches()
@@ -158,6 +164,39 @@ class SportsRepository(
         }
         if (errors.size == 5) {
             throw IllegalStateException("اتصال به داده زنده برقرار نشد")
+        }
+    }
+
+    suspend fun downloadOfflineData(): Int = withContext(Dispatchers.IO) {
+        refreshAll(includeNews = true)
+        val imageUrls = buildSet {
+            dao.getAllTeams().first().forEach { add(it.logo) }
+            dao.getAllLeagues().first().forEach { add(it.logo) }
+            dao.getAllPlayers().first().forEach { add(it.portrait); add(it.teamLogo) }
+            dao.getAllMatches().first().forEach {
+                add(it.homeTeamLogo); add(it.awayTeamLogo); add(it.leagueLogo)
+            }
+        }.filter { it.startsWith("https://") }
+        imageUrls.forEach { url ->
+            runCatching { imageLoader.execute(ImageRequest.Builder(appContext).data(url).build()) }
+        }
+        imageUrls.size
+    }
+
+    suspend fun latestRelease(): Pair<String, String> = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("https://api.github.com/repos/sahandse/natijeh-app/releases/latest")
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "natijeh-android")
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("GitHub ${response.code}")
+            val json = response.body?.string().orEmpty()
+            val tag = Regex("\\\"tag_name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").find(json)?.groupValues?.get(1)
+                ?: error("release tag missing")
+            val url = Regex("\\\"html_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").find(json)?.groupValues?.get(1)
+                ?: error("release url missing")
+            tag.removePrefix("v") to url
         }
     }
 
