@@ -13,8 +13,8 @@ android {
     applicationId = "ir.natijeh.app"
     minSdk = 24
     targetSdk = 36
-    versionCode = 12
-    versionName = "1.8.1"
+    versionCode = 13
+    versionName = "1.9.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
