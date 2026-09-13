@@ -93,26 +93,12 @@ fun PlayerDetailScreen(
                     }
                 )
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (p.goals > 0) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = natijehCardElevation(),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("گل در لیگ", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("${p.goals}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PlayerMetric("گل", p.goals.toString(), Modifier.weight(1f))
+                        PlayerMetric("سن", if (p.age > 0) p.age.toString() else "—", Modifier.weight(1f))
+                        PlayerMetric("شماره", if (p.shirtNumber > 0) p.shirtNumber.toString() else "—", Modifier.weight(1f))
                     }
                     PlayerFact("پست", p.position.ifBlank { "—" })
-                    PlayerFact("شماره پیراهن", if (p.shirtNumber > 0) p.shirtNumber.toString() else "—")
-                    PlayerFact("سن", if (p.age > 0) "${p.age} سال" else "—")
                     if (p.country.isNotBlank()) {
                         PlayerFact("ملیت", p.country)
                     }
@@ -122,6 +108,16 @@ fun PlayerDetailScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
+        }
+    }
+}
+
+@Composable
+private fun PlayerMetric(label: String, value: String, modifier: Modifier) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp), modifier = modifier) {
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 15.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
