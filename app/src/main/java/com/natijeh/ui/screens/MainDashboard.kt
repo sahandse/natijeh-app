@@ -342,6 +342,7 @@ fun MainDashboard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodayTabContent(
     viewModel: SportsViewModel,
@@ -639,6 +640,7 @@ private fun HomeNewsCard(article: NewsEntity) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LiveTabContent(
     viewModel: SportsViewModel,
@@ -1546,8 +1548,7 @@ fun SearchResultsContent(
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
-    onNavigateToPlayer: (String) -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToPlayer: (String) -> Unit
 ) {
     val allMatches by sportsViewModel.allMatches.collectAsStateWithLifecycle()
     val leagues by sportsViewModel.allLeagues.collectAsStateWithLifecycle()
@@ -1683,7 +1684,8 @@ private fun MoreTabContent(
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
-    onNavigateToPlayer: (String) -> Unit
+    onNavigateToPlayer: (String) -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     when (moreSection) {
         "leagues" -> MoreSectionScaffold("لیگ‌ها", onBack = { onSelectSection(null) }) {
