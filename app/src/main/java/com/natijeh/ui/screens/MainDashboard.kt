@@ -79,6 +79,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -637,6 +638,8 @@ fun LiveTabContent(
     isRefreshing: Boolean,
     compactCards: Boolean = true
 ) {
+    val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val liveCanvas = if (darkMode) Color(0xFF070809) else MaterialTheme.colorScheme.background
     val liveMatches by viewModel.liveMatches.collectAsStateWithLifecycle()
     val allMatches by viewModel.allMatches.collectAsStateWithLifecycle()
     val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
@@ -676,20 +679,20 @@ fun LiveTabContent(
     val lastUpdated = liveMatches.maxOfOrNull { it.lastUpdatedMillis }?.takeIf { it > 0 }
         ?.let { SimpleDateFormat("HH:mm", Locale("fa")).format(Date(it)) } ?: "—"
 
-    PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
-        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize().background(liveCanvas)) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             PulseDot(size = 10.dp)
-                            Text("مسابقات زنده", color = LiveRed, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                            Text("زنده", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                         }
                         Text("بروزرسانی خودکار · آخرین دریافت $lastUpdated", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Surface(shape = RoundedCornerShape(14.dp), color = LiveRed.copy(alpha = 0.12f)) {
-                            Text("${liveMatches.size} بازی", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), color = LiveRed, fontWeight = FontWeight.Black)
+                        Surface(shape = CircleShape, color = if (darkMode) Color(0xFF191A1D) else MaterialTheme.colorScheme.surface) {
+                            Text("${liveMatches.size}", modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Black)
                         }
                         IconButton(onClick = { viewModel.refresh() }, enabled = !isRefreshing) {
                             if (isRefreshing) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -718,7 +721,23 @@ fun LiveTabContent(
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(listOf("all" to "همه", "favorites" to "محبوب‌ها", "goals" to "دارای گل", "first" to "نیمه اول", "second" to "نیمه دوم", "extra" to "وقت اضافه")) { (key, label) ->
-                        FilterChip(selected = filter == key, onClick = { filter = key }, label = { Text(label) })
+                        FilterChip(
+                            selected = filter == key,
+                            onClick = { filter = key },
+                            label = { Text(label, fontWeight = if (filter == key) FontWeight.Bold else FontWeight.Medium) },
+                            shape = CircleShape,
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = filter == key,
+                                borderColor = if (darkMode) Color(0xFF26282C) else MaterialTheme.colorScheme.outlineVariant,
+                                selectedBorderColor = Color.Transparent
+                            ),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = if (darkMode) Color(0xFF101114) else MaterialTheme.colorScheme.surface,
+                                selectedContainerColor = MaterialTheme.colorScheme.onBackground,
+                                selectedLabelColor = MaterialTheme.colorScheme.background
+                            )
+                        )
                     }
                 }
             }
@@ -733,13 +752,15 @@ fun LiveTabContent(
                         Row(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable {
                                 collapsedLeagues = if (collapseKey in collapsedLeagues) collapsedLeagues - collapseKey else collapsedLeagues + collapseKey
-                            }.padding(horizontal = 10.dp, vertical = 9.dp),
+                            }.padding(horizontal = 4.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(9.dp)
                         ) {
                             if (league.logo.isNotBlank()) AsyncImage(league.logo, league.name, modifier = Modifier.size(22.dp))
                             Text(league.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                            Text("${leagueMatches.size} زنده", color = LiveRed, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Surface(shape = CircleShape, color = LiveRed.copy(alpha = 0.12f)) {
+                                Text("${leagueMatches.size} زنده", modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp), color = LiveRed, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            }
                             Text(if (collapseKey in collapsedLeagues) "+" else "−", style = MaterialTheme.typography.titleLarge)
                         }
                     }
@@ -773,12 +794,14 @@ private fun FeaturedLiveMatch(
     onNotify: () -> Unit
 ) {
     val latestEvent = events.lastOrNull()
+    val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardColor = if (darkMode) Color(0xFF111215) else MaterialTheme.colorScheme.surface
     Card(
         shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth().border(1.dp, LiveRed.copy(alpha = 0.55f), RoundedCornerShape(26.dp)).clickable { onNavigateToMatch(match.id) }
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        modifier = Modifier.fillMaxWidth().border(1.dp, if (darkMode) Color(0xFF292B30) else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(26.dp)).clickable { onNavigateToMatch(match.id) }
     ) {
-        Column(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(LiveRed.copy(alpha = 0.12f), Color.Transparent))).padding(18.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(if (darkMode) Color(0xFF18191D) else MaterialTheme.colorScheme.surface, cardColor))).padding(18.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(modifier = Modifier.clickable { onNavigateToLeague(match.leagueId) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (match.leagueLogo.isNotBlank()) AsyncImage(match.leagueLogo, match.leagueName, modifier = Modifier.size(22.dp))
@@ -786,7 +809,9 @@ private fun FeaturedLiveMatch(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     PulseDot(size = 8.dp)
-                    Text(match.liveTime.ifBlank { "${match.minute}'" }.ifBlank { "زنده" }, color = LiveRed, fontWeight = FontWeight.Black)
+                    Surface(shape = CircleShape, color = LiveRed) {
+                        Text(match.liveTime.ifBlank { "${match.minute}'" }.ifBlank { "زنده" }, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelMedium)
+                    }
                     IconButton(onClick = onNotify, modifier = Modifier.size(38.dp)) {
                         Icon(if (match.isFavorite) Icons.Outlined.Notifications else Icons.Outlined.Notifications, "اعلان مسابقه", tint = if (match.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -796,14 +821,14 @@ private fun FeaturedLiveMatch(
                 HomeFeaturedTeam(match.homeTeamName, match.homeTeamLogo, Modifier.weight(1f)) { onNavigateToTeam(match.homeTeamId) }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     AnimatedContent(targetState = "${match.homeScore} - ${match.awayScore}", label = "live-score") { score ->
-                        Text(score, color = LiveRed, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
+                        Text(score, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Black)
                     }
                     Text(match.statusTitle.ifBlank { "در جریان" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                 }
                 HomeFeaturedTeam(match.awayTeamName, match.awayTeamLogo, Modifier.weight(1f)) { onNavigateToTeam(match.awayTeamId) }
             }
             latestEvent?.let { event ->
-                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.background.copy(alpha = 0.72f), modifier = Modifier.fillMaxWidth()) {
+                Surface(shape = RoundedCornerShape(16.dp), color = if (darkMode) Color(0xFF090A0C) else MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text(liveEventIcon(event.type), style = MaterialTheme.typography.titleMedium)
                         Column(modifier = Modifier.weight(1f)) {
@@ -821,7 +846,8 @@ private fun FeaturedLiveMatch(
 
 @Composable
 private fun LiveEventChip(match: MatchEntity, event: MatchEvent, onClick: () -> Unit) {
-    Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.width(190.dp).clickable(onClick = onClick)) {
+    val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    Surface(shape = RoundedCornerShape(18.dp), color = if (darkMode) Color(0xFF111215) else MaterialTheme.colorScheme.surface, modifier = Modifier.width(200.dp).border(1.dp, if (darkMode) Color(0xFF24262A) else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp)).clickable(onClick = onClick)) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             Text(liveEventIcon(event.type), style = MaterialTheme.typography.titleMedium)
             Column(modifier = Modifier.weight(1f)) {
@@ -846,12 +872,14 @@ private fun LiveMatchPanel(
 ) {
     val stats = remember(match.statsJson) { runCatching { dashboardStatAdapter.fromJson(match.statsJson).orEmpty() }.getOrDefault(emptyList()) }
     val quickStats = stats.filter { stat -> stat.title.contains("مالکیت") || stat.title.contains("شوت") }.take(2)
-    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = LiveRed.copy(alpha = 0.055f)), modifier = Modifier.fillMaxWidth().border(1.dp, LiveRed.copy(alpha = 0.24f), RoundedCornerShape(18.dp))) {
+    val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val panelColor = if (darkMode) Color(0xFF101114) else MaterialTheme.colorScheme.surface
+    Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = panelColor), modifier = Modifier.fillMaxWidth().border(1.dp, if (darkMode) Color(0xFF24262A) else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))) {
         Column {
             MatchCard(match, onMatch, onNotify, onHomeTeam, onAwayTeam, onLeague, showLeague = false, compact = compact)
             val latest = events.lastOrNull()
             if (latest != null || quickStats.isNotEmpty()) {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().background(if (darkMode) Color(0xFF0B0C0E) else MaterialTheme.colorScheme.background.copy(alpha = 0.55f)).padding(horizontal = 14.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     latest?.let {
                         Text("آخرین اتفاق: ${liveEventTitle(it)} · ${it.minute}'", maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (it.type == "CARD_RED") LiveRed else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
                     }
