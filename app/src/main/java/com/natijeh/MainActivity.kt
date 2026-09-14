@@ -95,6 +95,9 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToLeague = { leagueId ->
                                         navController.navigate("league_detail/$leagueId")
                                     },
+                                    onNavigateToLeagueTab = { leagueId, tab ->
+                                        navController.navigate("league_detail/$leagueId?tab=$tab")
+                                    },
                                     onNavigateToPlayer = { playerId ->
                                         navController.navigate("player_detail/$playerId")
                                     },
@@ -163,12 +166,17 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             composable(
-                                route = "league_detail/{leagueId}",
-                                arguments = listOf(navArgument("leagueId") { type = NavType.StringType })
+                                route = "league_detail/{leagueId}?tab={tab}",
+                                arguments = listOf(
+                                    navArgument("leagueId") { type = NavType.StringType },
+                                    navArgument("tab") { type = NavType.StringType; defaultValue = "table" }
+                                )
                             ) { backStackEntry ->
                                 val leagueId = backStackEntry.arguments?.getString("leagueId").orEmpty()
+                                val initialTab = backStackEntry.arguments?.getString("tab") ?: "table"
                                 LeagueDetailScreen(
                                     leagueId = leagueId,
+                                    initialTab = initialTab,
                                     viewModel = sportsViewModel,
                                     onBack = { navController.popBackStack() },
                                     onNavigateToTeam = { teamId ->

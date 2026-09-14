@@ -82,6 +82,7 @@ private val fixturesAdapter = moshi.adapter<List<FixtureRound>>(
 @Composable
 fun LeagueDetailScreen(
     leagueId: String,
+    initialTab: String = "table",
     viewModel: SportsViewModel,
     onBack: () -> Unit,
     onNavigateToTeam: (String) -> Unit,
@@ -90,7 +91,7 @@ fun LeagueDetailScreen(
 ) {
     val league by viewModel.getLeagueFlow(leagueId).collectAsStateWithLifecycle(initialValue = null)
     val knowledge by viewModel.getProfileKnowledgeFlow("league", leagueId).collectAsStateWithLifecycle(initialValue = null)
-    var selectedTab by remember { mutableStateOf("table") }
+    var selectedTab by remember(leagueId, initialTab) { mutableStateOf(initialTab.takeIf { it in setOf("table", "scorers", "week", "info") } ?: "table") }
 
     LaunchedEffect(leagueId) {
         viewModel.loadLeagueDetails(leagueId)

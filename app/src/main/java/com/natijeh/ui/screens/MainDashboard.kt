@@ -74,6 +74,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,6 +96,10 @@ import com.natijeh.R
 import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.MatchEvent
+import com.natijeh.data.model.LeagueEntity
+import com.natijeh.data.model.StandingRow
+import com.natijeh.data.model.ScorerRow
+import com.natijeh.data.model.FixtureRound
 import com.natijeh.data.model.NewsEntity
 import com.natijeh.data.model.PlayerEntity
 import com.natijeh.data.model.StatItem
@@ -115,6 +120,9 @@ import java.util.Locale
 private val dashboardMoshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
 private val dashboardEventAdapter = dashboardMoshi.adapter<List<MatchEvent>>(Types.newParameterizedType(List::class.java, MatchEvent::class.java))
 private val dashboardStatAdapter = dashboardMoshi.adapter<List<StatItem>>(Types.newParameterizedType(List::class.java, StatItem::class.java))
+private val dashboardStandingsAdapter = dashboardMoshi.adapter<List<StandingRow>>(Types.newParameterizedType(List::class.java, StandingRow::class.java))
+private val dashboardScorersAdapter = dashboardMoshi.adapter<List<ScorerRow>>(Types.newParameterizedType(List::class.java, ScorerRow::class.java))
+private val dashboardFixturesAdapter = dashboardMoshi.adapter<List<FixtureRound>>(Types.newParameterizedType(List::class.java, FixtureRound::class.java))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,6 +133,7 @@ fun MainDashboard(
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
+    onNavigateToLeagueTab: (String, String) -> Unit = { id, _ -> onNavigateToLeague(id) },
     onNavigateToPlayer: (String) -> Unit,
     onNavigateToSettings: () -> Unit = {}
 ) {
@@ -315,7 +324,7 @@ fun MainDashboard(
                 when (activeTab) {
                     "today" -> TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer, isRefreshing, compactCards)
                     "live" -> LiveTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, isRefreshing, compactCards)
-                    "leagues" -> LeaguesTabContent(sportsViewModel, onNavigateToLeague)
+                    "leagues" -> LeaguesTabContent(sportsViewModel, onNavigateToLeague, onNavigateToLeagueTab)
                     "favorites" -> FavoritesTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer)
                     else -> MoreTabContent(
                         moreSection = moreSection,
@@ -965,61 +974,222 @@ private fun LiveMetric(value: String, label: String) {
 }
 
 @Composable
-fun LeaguesTabContent(viewModel: SportsViewModel, onNavigateToLeague: (String) -> Unit) {
+fun LeaguesTabContent(viewModel: SportsViewModel, onNavigateToLeague: (String) -> Unit, onNavigateToLeagueTab: (String, String) -> Unit = { id, _ -> onNavigateToLeague(id) }) {
     val leagues by viewModel.allLeagues.collectAsStateWithLifecycle()
+    val liveMatches by viewModel.liveMatches.collectAsStateWithLifecycle()
+    var query by rememberSaveable { mutableStateOf("") }
+    var countryFilter by rememberSaveable { mutableStateOf("همه") }
+    var recentIds by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var collapsedGroups by rememberSaveable { mutableStateOf(listOf<String>()) }
+    val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
     if (leagues.isEmpty()) {
-        EmptyState(message = "لیگ‌ها در حال بارگذاری هستند.")
+        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(5) {
+                Box(Modifier.fillMaxWidth().height(if (it == 0) 154.dp else 86.dp).clip(RoundedCornerShape(22.dp)).shimmer())
+            }
+        }
         return
     }
+    val openLeague: (String) -> Unit = { id ->
+        recentIds = (listOf(id) + recentIds.filterNot { it == id }).take(5)
+        onNavigateToLeague(id)
+    }
+    val countries = remember(leagues) { listOf("همه") + leagues.map { it.country.ifBlank { "سایر" } }.distinct().sorted() }
+    val filtered = remember(leagues, query, countryFilter) {
+        leagues.filter {
+            (query.isBlank() || it.name.contains(query, true) || it.country.contains(query, true)) &&
+                (countryFilter == "همه" || it.country.ifBlank { "سایر" } == countryFilter)
+        }.sortedByDescending { it.isFavorite }
+    }
+    val grouped = remember(filtered) { filtered.groupBy { leagueRegion(it.country) } }
+    val favoriteLeague = leagues.firstOrNull { it.isFavorite }
+    val liveCounts = remember(liveMatches) { liveMatches.groupingBy { it.leagueId }.eachCount() }
+    val recent = remember(leagues, recentIds) { recentIds.mapNotNull { id -> leagues.firstOrNull { it.id == id } } }
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxSize().background(if (darkMode) Color(0xFF070809) else MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(leagues, key = { it.id }) { league ->
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = natijehCardElevation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
-                    .clickable { onNavigateToLeague(league.id) }
-            ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("رقابت‌ها", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                Text("لیگ‌ها، جدول‌ها و برنامه مسابقات", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("جستجوی لیگ یا کشور…") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                trailingIcon = { if (query.isNotBlank()) IconButton(onClick = { query = "" }) { Icon(Icons.Default.Clear, "پاک‌کردن") } },
+                singleLine = true,
+                shape = RoundedCornerShape(18.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = if (darkMode) Color(0xFF111215) else MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = if (darkMode) Color(0xFF111215) else MaterialTheme.colorScheme.surface,
+                    unfocusedBorderColor = if (darkMode) Color(0xFF25272B) else MaterialTheme.colorScheme.outlineVariant
+                )
+            )
+        }
+        favoriteLeague?.let { league ->
+            item { FeaturedLeagueCard(league, liveCounts[league.id] ?: 0, { openLeague(league.id) }) { viewModel.toggleLeagueFavorite(league.id, league.isFavorite) } }
+        }
+        val hot = leagues.filter { (liveCounts[it.id] ?: 0) > 0 }.sortedByDescending { liveCounts[it.id] }.take(5)
+        if (hot.isNotEmpty()) {
+            item { HomeSectionTitle("لیگ‌های داغ", "رقابت‌های دارای بازی زنده") }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(hot, key = { "hot-${it.id}" }) { league ->
+                        HotLeagueCard(league, liveCounts[league.id] ?: 0) { openLeague(league.id) }
+                    }
+                }
+            }
+        }
+        if (recent.isNotEmpty()) {
+            item { HomeSectionTitle("اخیراً دیده‌شده", "دسترسی سریع") }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(recent, key = { "recent-${it.id}" }) { league ->
+                        LeagueLogoShortcut(league) { openLeague(league.id) }
+                    }
+                }
+            }
+        }
+        item {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(countries) { country ->
+                    FilterChip(
+                        selected = countryFilter == country,
+                        onClick = { countryFilter = country },
+                        label = { Text(country) },
+                        shape = CircleShape,
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.onBackground, selectedLabelColor = MaterialTheme.colorScheme.background)
+                    )
+                }
+            }
+        }
+        if (filtered.isEmpty()) {
+            item { EmptyState("لیگی با این نام یا کشور پیدا نشد.") }
+        } else grouped.forEach { (region, regionLeagues) ->
+            item(key = "region-$region") {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable {
+                        collapsedGroups = if (region in collapsedGroups) collapsedGroups - region else collapsedGroups + region
+                    }.padding(vertical = 10.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.size(48.dp)) {
-                            AsyncImage(
-                                model = league.logo,
-                                contentDescription = league.name,
-                                modifier = Modifier
-                                    .padding(8.dp)
-                                    .fillMaxSize()
-                            )
-                        }
-                        Text(
-                            text = league.name,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    IconButton(onClick = { viewModel.toggleLeagueFavorite(league.id, league.isFavorite) }) {
-                        Icon(
-                            imageVector = if (league.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "علاقه‌مندی",
-                            tint = if (league.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(region, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    Text("${regionLeagues.size} لیگ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                    Text(if (region in collapsedGroups) "+" else "−", modifier = Modifier.padding(start = 12.dp), style = MaterialTheme.typography.titleLarge)
+                }
+            }
+            if (region !in collapsedGroups) items(regionLeagues, key = { it.id }) { league ->
+                LeagueHubCard(
+                    league = league,
+                    liveCount = liveCounts[league.id] ?: 0,
+                    onOpen = { openLeague(league.id) },
+                    onOpenTab = { tab ->
+                        recentIds = (listOf(league.id) + recentIds.filterNot { it == league.id }).take(5)
+                        onNavigateToLeagueTab(league.id, tab)
+                    },
+                    onFavorite = { viewModel.toggleLeagueFavorite(league.id, league.isFavorite) }
+                )
+            }
+        }
+    }
+}
+
+private fun leagueRegion(country: String): String = when {
+    country.contains("ایران") -> "ایران"
+    listOf("انگل", "اسپان", "ایتال", "آلمان", "فرانس", "پرتغال", "هلند", "اروپا").any { country.contains(it, true) } -> "اروپا"
+    listOf("آسیا", "عرب", "قطر", "امارات", "ژاپن", "کره", "چین").any { country.contains(it, true) } -> "آسیا"
+    country.contains("ملی") || country.contains("جهان") -> "ملی و بین‌المللی"
+    else -> "سایر رقابت‌ها"
+}
+
+@Composable
+private fun FeaturedLeagueCard(league: LeagueEntity, liveCount: Int, onOpen: () -> Unit, onFavorite: () -> Unit) {
+    val standings = remember(league.standingsJson) { runCatching { dashboardStandingsAdapter.fromJson(league.standingsJson).orEmpty() }.getOrDefault(emptyList()) }
+    val leader = standings.minByOrNull { it.rank }
+    Card(shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(26.dp)).clickable(onClick = onOpen)) {
+        Column(modifier = Modifier.background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f), Color.Transparent))).padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.size(68.dp)) { AsyncImage(league.logo, league.name, modifier = Modifier.padding(10.dp)) }
+                Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp)) {
+                    Text("لیگ محبوب", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                    Text(league.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    Text(league.country.ifBlank { "رقابت بین‌المللی" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+                IconButton(onClick = onFavorite) { Icon(Icons.Default.Favorite, "حذف از محبوب‌ها") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                leader?.let { LeagueInfoPill("صدرنشین", "${it.teamName} · ${it.points}", Modifier.weight(1f)) }
+                if (liveCount > 0) LeagueInfoPill("اکنون", "$liveCount بازی زنده", Modifier.weight(1f), LiveRed)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeagueInfoPill(label: String, value: String, modifier: Modifier = Modifier, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
+    Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.background, modifier = modifier) {
+        Column(Modifier.padding(12.dp)) {
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            Text(value, color = valueColor, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+private fun HotLeagueCard(league: LeagueEntity, liveCount: Int, onClick: () -> Unit) {
+    Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.width(150.dp).clickable(onClick = onClick)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            AsyncImage(league.logo, league.name, modifier = Modifier.size(42.dp))
+            Text(league.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { PulseDot(size = 7.dp); Text("$liveCount بازی زنده", color = LiveRed, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+@Composable
+private fun LeagueLogoShortcut(league: LeagueEntity, onClick: () -> Unit) {
+    Column(modifier = Modifier.width(84.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, modifier = Modifier.size(58.dp)) { AsyncImage(league.logo, league.name, modifier = Modifier.padding(9.dp)) }
+        Text(league.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun LeagueHubCard(league: LeagueEntity, liveCount: Int, onOpen: () -> Unit, onOpenTab: (String) -> Unit, onFavorite: () -> Unit) {
+    val standings = remember(league.standingsJson) { runCatching { dashboardStandingsAdapter.fromJson(league.standingsJson).orEmpty() }.getOrDefault(emptyList()) }
+    val scorers = remember(league.scorersJson) { runCatching { dashboardScorersAdapter.fromJson(league.scorersJson).orEmpty() }.getOrDefault(emptyList()) }
+    val fixtures = remember(league.fixturesJson) { runCatching { dashboardFixturesAdapter.fromJson(league.fixturesJson).orEmpty() }.getOrDefault(emptyList()) }
+    val leader = standings.minByOrNull { it.rank }
+    val scorer = scorers.maxByOrNull { it.goals }
+    val next = fixtures.firstOrNull()?.matches?.firstOrNull()
+    Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)).clickable(onClick = onOpen)) {
+        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.size(52.dp)) { AsyncImage(league.logo, league.name, modifier = Modifier.padding(8.dp)) }
+                Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Text(league.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                    Text(league.country.ifBlank { "سایر" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                }
+                if (liveCount > 0) Text("$liveCount زنده", color = LiveRed, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                IconButton(onClick = onFavorite) { Icon(if (league.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "محبوب", tint = if (league.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            if (leader != null || scorer != null || next != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    leader?.let { Text("صدرنشین  ${it.teamName} · ${it.points} امتیاز", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium) }
+                    scorer?.let { Text("بهترین گلزن  ${it.name} · ${it.goals} گل", maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium) }
+                    next?.let { Text("بازی بعدی  ${it.homeTeamName} - ${it.awayTeamName} · ${it.time}", maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium) }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("table" to "جدول", "scorers" to "گلزنان", "week" to "برنامه", "info" to "معرفی").forEach { (tab, label) ->
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.clickable { onOpenTab(tab) }) { Text(label, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelSmall) }
                 }
             }
         }
