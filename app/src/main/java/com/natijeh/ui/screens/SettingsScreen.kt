@@ -1,0 +1,584 @@
+package com.natijeh.ui.screens
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.SportsScore
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.SportsSoccer
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.natijeh.BuildConfig
+import com.natijeh.data.settings.ThemeMode
+import com.natijeh.data.settings.CardDensity
+import com.natijeh.data.settings.NotificationPreset
+import com.natijeh.ui.viewmodel.SettingsViewModel
+import com.natijeh.ui.viewmodel.SportsViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    sportsViewModel: SportsViewModel,
+    onBack: () -> Unit
+) {
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val maintenance by sportsViewModel.maintenance.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val colors = MaterialTheme.colorScheme
+    var confirmClear by remember { mutableStateOf(false) }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("پاک‌کردن تصاویر آفلاین؟") },
+            text = { Text("علاقه‌مندی‌ها و اطلاعات مسابقات حذف نمی‌شوند؛ فقط کش تصاویر پاک خواهد شد.") },
+            confirmButton = { TextButton(onClick = { confirmClear = false; sportsViewModel.clearOfflineImages() }) { Text("پاک‌کردن") } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("انصراف") } }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("تنظیمات", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colors.background,
+                    titleContentColor = colors.onBackground,
+                    navigationIconContentColor = colors.onBackground
+                )
+            )
+        },
+        containerColor = colors.background
+    ) { inner ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(inner)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            ScoreboardHero()
+
+            SectionLabel("ظاهر")
+            ThemePicker(
+                selected = settings.themeMode,
+                onSelect = viewModel::setThemeMode
+            )
+
+            SectionLabel("چیدمان کارت‌ها")
+            ChoiceRow(
+                options = listOf("فشرده" to CardDensity.COMPACT, "بزرگ" to CardDensity.COMFORTABLE),
+                selected = settings.cardDensity,
+                onSelect = viewModel::setCardDensity
+            )
+
+            SectionLabel("اعلان و نمایش")
+            ChoiceRow(
+                options = listOf(
+                    "فقط گل" to NotificationPreset.GOALS,
+                    "مهم" to NotificationPreset.IMPORTANT,
+                    "همه" to NotificationPreset.ALL
+                ),
+                selected = settings.notificationPreset,
+                onSelect = viewModel::setNotificationPreset
+            )
+            SettingsCard {
+                SettingToggle(
+                    icon = Icons.Outlined.Notifications,
+                    title = "اعلان‌های مسابقه",
+                    subtitle = "برای بازی، تیم و لیگ‌های محبوب",
+                    checked = settings.alertsEnabled,
+                    onCheckedChange = viewModel::setAlertsEnabled
+                )
+                if (settings.alertsEnabled) {
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.Timer,
+                        title = "شروع مسابقه",
+                        subtitle = "هنگام شروع بازی محبوب",
+                        checked = settings.kickoffNotifications,
+                        onCheckedChange = viewModel::setKickoffNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.SportsScore,
+                        title = "گل",
+                        subtitle = "اعلان فوری تغییر نتیجه",
+                        checked = settings.goalNotifications,
+                        onCheckedChange = viewModel::setGoalNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.NotificationsActive,
+                        title = "کارت قرمز",
+                        subtitle = "اتفاق مهم مسابقه",
+                        checked = settings.redCardNotifications,
+                        onCheckedChange = viewModel::setRedCardNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.SportsSoccer,
+                        title = "نتیجه نهایی",
+                        subtitle = "پس از سوت پایان",
+                        checked = settings.fullTimeNotifications,
+                        onCheckedChange = viewModel::setFullTimeNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.Person,
+                        title = "بازیکنان محبوب",
+                        subtitle = "گل و کارت بازیکن دنبال‌شده",
+                        checked = settings.playerNotifications,
+                        onCheckedChange = viewModel::setPlayerNotifications
+                    )
+                }
+                Hairline()
+                SettingToggle(
+                    icon = Icons.Outlined.WbSunny,
+                    title = "روشن ماندن صفحه",
+                    subtitle = "وقتی جزئیات بازی زنده باز است",
+                    checked = settings.keepScreenOnLive,
+                    onCheckedChange = viewModel::setKeepScreenOnLive
+                )
+                Hairline()
+                SettingToggle(
+                    icon = Icons.Outlined.SportsSoccer,
+                    title = "شروع روی تب زنده",
+                    subtitle = "اگر مسابقه‌ای در جریان باشد",
+                    checked = settings.openLiveTab,
+                    onCheckedChange = viewModel::setOpenLiveTab
+                )
+            }
+
+            SectionLabel("داده و فضای آفلاین")
+            SettingsCard {
+                SettingAction(
+                    icon = Icons.Outlined.CloudDownload,
+                    title = if (maintenance.downloading) "توقف دانلود محتوا" else "دانلود داده برای آفلاین",
+                    subtitle = maintenance.downloadMessage ?: "داده‌ها و تصاویر عمومی را یک‌بار ذخیره کن",
+                    enabled = true,
+                    progress = maintenance.downloadProgress,
+                    onClick = { if (maintenance.downloading) sportsViewModel.cancelOfflineDownload() else sportsViewModel.downloadOfflineData() }
+                )
+                Hairline()
+                AboutRow("فضای داده آفلاین", formatBytes(maintenance.offlineBytes))
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.DeleteSweep,
+                    title = "پاک‌کردن تصاویر آفلاین",
+                    subtitle = "داده‌های مسابقات و علاقه‌مندی‌ها باقی می‌مانند",
+                    enabled = !maintenance.downloading,
+                    onClick = { confirmClear = true }
+                )
+            }
+
+            SectionLabel("درباره و بروزرسانی")
+            SettingsCard {
+                AboutRow("نسخه نصب‌شده", BuildConfig.VERSION_NAME)
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.SystemUpdate,
+                    title = "بررسی بروزرسانی",
+                    subtitle = maintenance.updateMessage ?: "مرجع رسمی GitHub Releases",
+                    enabled = !maintenance.checkingUpdate && !maintenance.updateDownloading,
+                    progress = maintenance.updateProgress,
+                    onClick = {
+                        when {
+                            maintenance.updateApkUri != null -> runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(Uri.parse(maintenance.updateApkUri), "application/vnd.android.package-archive")
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                )
+                            }
+                            maintenance.updateUrl != null -> sportsViewModel.downloadUpdate()
+                            else -> sportsViewModel.checkForUpdate()
+                        }
+                    }
+                )
+                maintenance.releaseNotes?.takeIf { it.isNotBlank() }?.let { notes ->
+                    Hairline()
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("تغییرات نسخه ${maintenance.updateVersion.orEmpty()}", fontWeight = FontWeight.Bold)
+                        Text(notes, maxLines = 6, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.PhoneAndroid,
+                    title = "صفحه رسمی پروژه",
+                    subtitle = "GitHub · sahandse/natijeh-app",
+                    enabled = true,
+                    onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/sahandse/natijeh-app"))) } }
+                )
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.Notifications,
+                    title = "گزارش خطا و بازخورد",
+                    subtitle = "ارسال گزارش همراه نسخه و مدل دستگاه",
+                    enabled = true,
+                    onClick = {
+                        val body = "نسخه: ${BuildConfig.VERSION_NAME}\nدستگاه: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nاندروید: ${android.os.Build.VERSION.RELEASE}\n\nشرح مشکل:\n"
+                        runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:?subject=Natijeh feedback&body=${Uri.encode(body)}")), "ارسال بازخورد")) }
+                    }
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes <= 0 -> "خالی"
+    bytes < 1024 * 1024 -> "${bytes / 1024} کیلوبایت"
+    else -> String.format("%.1f مگابایت", bytes / (1024.0 * 1024.0))
+}
+
+@Composable
+private fun SettingAction(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    enabled: Boolean,
+    progress: Int? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Text(
+                if (progress != null && progress in 0..99) "$subtitle · $progress٪" else subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+            if (progress != null && progress in 0..99) {
+                LinearProgressIndicator(
+                    progress = { progress / 100f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(4.dp).clip(CircleShape),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun <T> ChoiceRow(options: List<Pair<String, T>>, selected: T, onSelect: (T) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (label, value) ->
+            FilterChip(
+                selected = selected == value,
+                onClick = { onSelect(value) },
+                label = { Text(label) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScoreboardHero() {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(colors.primary.copy(alpha = 0.18f), colors.surface)
+                )
+            )
+            .padding(vertical = 22.dp, horizontal = 16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text("نتیجه", color = colors.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text("۲", color = colors.onSurface, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(colors.primary)
+                )
+                Text("۱", color = colors.onSurface, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+            }
+            Text(
+                "مینیمال · زنده · فارسی",
+                color = colors.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(start = 4.dp)
+    )
+}
+
+@Composable
+private fun ThemePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        item {
+            ThemePreviewCard(
+                modifier = Modifier.width(116.dp),
+                title = "تیره",
+                selected = selected == ThemeMode.DARK,
+                icon = Icons.Outlined.DarkMode,
+                canvas = Color(0xFF07090C),
+                card = Color(0xFF12161C),
+                accent = Color(0xFF1DB954),
+                onClick = { onSelect(ThemeMode.DARK) }
+            )
+        }
+        item {
+            ThemePreviewCard(
+                modifier = Modifier.width(116.dp),
+                title = "AMOLED",
+                selected = selected == ThemeMode.AMOLED,
+                icon = Icons.Outlined.DarkMode,
+                canvas = Color.Black,
+                card = Color(0xFF090909),
+                accent = Color.White,
+                onClick = { onSelect(ThemeMode.AMOLED) }
+            )
+        }
+        item {
+            ThemePreviewCard(
+                modifier = Modifier.width(116.dp),
+                title = "سفید",
+                selected = selected == ThemeMode.LIGHT,
+                icon = Icons.Outlined.LightMode,
+                canvas = Color(0xFFF7F4EE),
+                card = Color.White,
+                accent = Color(0xFF128A3E),
+                onClick = { onSelect(ThemeMode.LIGHT) }
+            )
+        }
+        item {
+            ThemePreviewCard(
+                modifier = Modifier.width(116.dp),
+                title = "سیستم",
+                selected = selected == ThemeMode.SYSTEM,
+                icon = Icons.Outlined.PhoneAndroid,
+                canvas = Color(0xFF07090C),
+                card = Color.White,
+                accent = Color(0xFF1DB954),
+                split = true,
+                onClick = { onSelect(ThemeMode.SYSTEM) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemePreviewCard(
+    modifier: Modifier,
+    title: String,
+    selected: Boolean,
+    icon: ImageVector,
+    canvas: Color,
+    card: Color,
+    accent: Color,
+    split: Boolean = false,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(20.dp)
+    val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .border(if (selected) 2.dp else 1.dp, border, shape)
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(
+                    if (split) Brush.horizontalGradient(listOf(Color(0xFF07090C), Color(0xFFF7F4EE)))
+                    else Brush.linearGradient(listOf(canvas, canvas))
+                )
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(width = 44.dp, height = 28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (split) Color.Transparent else card)
+                    .then(
+                        if (split) Modifier.background(Brush.horizontalGradient(listOf(Color(0xFF12161C), Color.White)))
+                        else Modifier
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 10.dp)
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(accent)
+            )
+        }
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
+        Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun SettingsCard(content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(vertical = 4.dp)
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun SettingToggle(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary
+            )
+        )
+    }
+}
+
+@Composable
+private fun AboutRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun Hairline() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+        thickness = 0.6.dp
+    )
+}

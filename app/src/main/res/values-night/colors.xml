@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="natijeh_green">#FF1DB954</color>
+    <color name="natijeh_bg">#FF07090C</color>
+    <color name="natijeh_surface">#FF12161C</color>
+    <color name="natijeh_nav">#FF07090C</color>
+    <color name="natijeh_muted">#FF8B98A5</color>
+    <color name="natijeh_live">#FFE11D48</color>
+    <color name="natijeh_widget_bg">#FF12161C</color>
+    <color name="natijeh_widget_text">#FFF4F7F5</color>
+</resources>
