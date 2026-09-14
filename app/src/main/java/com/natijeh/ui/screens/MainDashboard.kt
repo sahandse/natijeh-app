@@ -333,7 +333,8 @@ fun MainDashboard(
                         onNavigateToMatch = onNavigateToMatch,
                         onNavigateToTeam = onNavigateToTeam,
                         onNavigateToLeague = onNavigateToLeague,
-                        onNavigateToPlayer = onNavigateToPlayer
+                        onNavigateToPlayer = onNavigateToPlayer,
+                        onNavigateToSettings = onNavigateToSettings
                     )
                 }
             }
@@ -1378,10 +1379,24 @@ fun FavoritesTabContent(
     val teams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
     val leagues by viewModel.favoriteLeagues.collectAsStateWithLifecycle()
     val players by viewModel.favoritePlayers.collectAsStateWithLifecycle()
+    val allMatches by viewModel.allMatches.collectAsStateWithLifecycle()
     var category by remember { mutableStateOf("all") }
+    val teamIds = remember(teams) { teams.map { it.id }.toSet() }
+    val leagueIds = remember(leagues) { leagues.map { it.id }.toSet() }
+    val relatedMatches = remember(allMatches, matches, teamIds, leagueIds) {
+        (matches + allMatches.filter { it.homeTeamId in teamIds || it.awayTeamId in teamIds || it.leagueId in leagueIds }).distinctBy { it.id }
+    }
+    val shownMatches = when (category) {
+        "live" -> relatedMatches.filter { it.status == "LIVE" }
+        "today" -> relatedMatches.filter { it.dayOffset == 0 }
+        else -> relatedMatches
+    }
 
     if (matches.isEmpty() && teams.isEmpty() && leagues.isEmpty() && players.isEmpty()) {
-        EmptyState(message = "آیتمی در لیست علاقه‌مندی‌ها موجود نیست.")
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            EmptyState(message = "هنوز دنیای فوتبال خودت را نساخته‌ای.")
+            Text("از جستجو، تیم‌ها، بازیکنان و لیگ‌های دلخواهت را انتخاب کن.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -1389,15 +1404,35 @@ fun FavoritesTabContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(listOf("all" to "همه", "matches" to "بازی‌ها", "teams" to "تیم‌ها", "leagues" to "لیگ‌ها", "players" to "بازیکنان")) { (key, label) ->
-                        FilterChip(selected = category == key, onClick = { category = key }, label = { Text(label) })
+                Card(shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f), Color.Transparent))).padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Text("دنیای فوتبال من", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            FavoriteMetric(teams.size, "تیم")
+                            FavoriteMetric(players.size, "بازیکن")
+                            FavoriteMetric(leagues.size, "لیگ")
+                            FavoriteMetric(matches.size, "بازی")
+                        }
                     }
                 }
             }
-            if (matches.isNotEmpty() && category in listOf("all", "matches")) {
+            val liveRelated = relatedMatches.filter { it.status == "LIVE" }
+            if (liveRelated.isNotEmpty() && category == "all") {
+                item { HomeSectionTitle("اکنون زنده", "مسابقات مرتبط با محبوب‌های شما") }
+                items(liveRelated, key = { "fav-live-${it.id}" }) { match ->
+                    MatchCard(match, { onNavigateToMatch(match.id) }, { viewModel.toggleMatchFavorite(match.id, match.isFavorite) }, { onNavigateToTeam(match.homeTeamId) }, { onNavigateToTeam(match.awayTeamId) }, { onNavigateToLeague(match.leagueId) })
+                }
+            }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(listOf("all" to "همه", "live" to "زنده", "today" to "امروز", "matches" to "بازی‌ها", "teams" to "تیم‌ها", "players" to "بازیکنان", "leagues" to "لیگ‌ها")) { (key, label) ->
+                        FilterChip(selected = category == key, onClick = { category = key }, label = { Text(label) }, shape = CircleShape)
+                    }
+                }
+            }
+            if (shownMatches.isNotEmpty() && category in listOf("all", "matches", "live", "today")) {
                 item { Text("مسابقات محبوب", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                items(matches, key = { "m${it.id}" }) { match ->
+                items(shownMatches, key = { "m${it.id}" }) { match ->
                     MatchCard(
                         match = match,
                         onClick = { onNavigateToMatch(match.id) },
@@ -1475,6 +1510,9 @@ fun FavoritesTabContent(
                             }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(player.name, fontWeight = FontWeight.Bold, maxLines = 1)
+                                if (player.name.contains("مسی", true) || player.name.contains("Messi", true)) {
+                                    Text("GOAT · LEGEND", color = com.natijeh.ui.theme.RankGold, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                                }
                                 Text(
                                     listOf(player.position, player.teamName).filter { it.isNotBlank() }.joinToString(" · "),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1494,13 +1532,22 @@ fun FavoritesTabContent(
 }
 
 @Composable
+private fun FavoriteMetric(value: Int, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
 fun SearchResultsContent(
     query: String,
     sportsViewModel: SportsViewModel,
     onNavigateToMatch: (String) -> Unit,
     onNavigateToTeam: (String) -> Unit,
     onNavigateToLeague: (String) -> Unit,
-    onNavigateToPlayer: (String) -> Unit
+    onNavigateToPlayer: (String) -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val allMatches by sportsViewModel.allMatches.collectAsStateWithLifecycle()
     val leagues by sportsViewModel.allLeagues.collectAsStateWithLifecycle()
@@ -1651,7 +1698,20 @@ private fun MoreTabContent(
         "notifications" -> MoreSectionScaffold("مرکز اعلان", onBack = { onSelectSection(null) }) {
             NotificationCenterContent(sportsViewModel, onNavigateToMatch)
         }
-        else -> MoreHub(onSelectSection)
+        "calendar" -> MoreSectionScaffold("تقویم مسابقات", onBack = { onSelectSection(null) }) {
+            TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer, false, true)
+        }
+        "rankings" -> MoreSectionScaffold("جدول‌ها و رتبه‌بندی", onBack = { onSelectSection(null) }) {
+            LeaguesTabContent(sportsViewModel, onNavigateToLeague)
+        }
+        "about" -> MoreSectionScaffold("درباره نتیجه", onBack = { onSelectSection(null) }) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("نتیجه", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                Text("نتایج زنده فوتبال فارسی با تمرکز بر سرعت، سادگی و اطلاعات عمومی معتبر.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("منابع داده: API عمومی ورزش ۳، RSS و ویکی‌پدیای فارسی", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        else -> MoreHub(onSelectSection, onNavigateToSettings, sportsViewModel)
     }
 }
 
@@ -1674,37 +1734,40 @@ private fun MoreSectionScaffold(title: String, onBack: () -> Unit, content: @Com
 }
 
 @Composable
-private fun MoreHub(onSelect: (String) -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        MoreTile(
-            title = "لیگ‌ها",
-            subtitle = "جدول، گلزنان و برنامه هفته",
-            icon = Icons.Default.Star,
-            onClick = { onSelect("leagues") }
-        )
-        MoreTile(
-            title = "اخبار",
-            subtitle = "فوتبال داخلی و خارجی از ورزش ۳",
-            icon = Icons.AutoMirrored.Filled.List,
-            onClick = { onSelect("news") }
-        )
-        MoreTile(
-            title = "علاقه‌مندی‌ها",
-            subtitle = "تیم‌ها، لیگ‌ها و بازی‌های محبوب",
-            icon = Icons.Default.Favorite,
-            onClick = { onSelect("favorites") }
-        )
-        MoreTile(
-            title = "مرکز اعلان",
-            subtitle = "گل‌ها و اتفاقات مهم قبلی",
-            icon = Icons.Outlined.Notifications,
-            onClick = { onSelect("notifications") }
-        )
+private fun MoreHub(onSelect: (String) -> Unit, onSettings: () -> Unit, viewModel: SportsViewModel) {
+    val history by viewModel.notificationHistory.collectAsStateWithLifecycle()
+    val allMatches by viewModel.allMatches.collectAsStateWithLifecycle()
+    var query by rememberSaveable { mutableStateOf("") }
+    val options = listOf(
+        Triple("leagues", "لیگ‌ها", "جدول، گلزنان و برنامه هفته"),
+        Triple("news", "اخبار", "فوتبال داخلی و خارجی"),
+        Triple("calendar", "تقویم مسابقات", "انتخاب تاریخ و برنامه بازی‌ها"),
+        Triple("rankings", "رتبه‌بندی", "جدول تیم‌ها و گلزنان"),
+        Triple("favorites", "مدیریت محبوب‌ها", "تیم‌ها، لیگ‌ها و بازیکنان"),
+        Triple("notifications", "مرکز اعلان", "گل‌ها و اتفاقات مهم قبلی"),
+        Triple("settings", "تنظیمات", "ظاهر، اعلان و دانلود آفلاین"),
+        Triple("about", "درباره برنامه", "منابع داده و اطلاعات نسخه")
+    ).filter { query.isBlank() || it.second.contains(query, true) || it.third.contains(query, true) }
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("بیشتر", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LeagueInfoPill("آخرین داده", "${allMatches.size} مسابقه", Modifier.weight(1f))
+                    LeagueInfoPill("اعلان‌ها", history.size.toString(), Modifier.weight(1f))
+                }
+                OutlinedTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(18.dp), leadingIcon = { Icon(Icons.Default.Search, null) }, placeholder = { Text("جستجوی امکانات…") })
+            }
+        }
+        items(options, key = { it.first }) { (key, title, subtitle) ->
+            MoreTile(
+                title = title,
+                subtitle = subtitle,
+                icon = when (key) { "news" -> Icons.AutoMirrored.Filled.List; "favorites" -> Icons.Default.Favorite; "notifications" -> Icons.Outlined.Notifications; "settings" -> Icons.Default.Settings; "calendar" -> Icons.Default.SportsSoccer; else -> Icons.Default.Star },
+                onClick = { if (key == "settings") onSettings() else onSelect(key) }
+            )
+        }
+        if (options.isEmpty()) item { EmptyState("امکانی با این عبارت پیدا نشد.") }
     }
 }
 

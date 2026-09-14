@@ -2,6 +2,9 @@ package com.natijeh.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,12 +50,12 @@ import coil.compose.AsyncImage
 import com.natijeh.ui.viewmodel.SettingsViewModel
 import com.natijeh.ui.viewmodel.SportsViewModel
 
-private data class FavoriteChoice(val id: String, val name: String, val logo: String, val favorite: Boolean)
+private data class FavoriteChoice(val id: String, val name: String, val logo: String, val favorite: Boolean, val detail: String = "")
 private data class OnboardingStep(val key: String, val title: String, val subtitle: String)
 
 private val onboardingSteps = listOf(
-    OnboardingStep("leagues", "لیگ‌های محبوب", "مسابقات مهم را بالاتر از بقیه ببین"),
     OnboardingStep("teams", "تیم‌های محبوب", "نتیجه و برنامه تیم‌ها را سریع دنبال کن"),
+    OnboardingStep("leagues", "لیگ‌های محبوب", "مسابقات مهم را بالاتر از بقیه ببین"),
     OnboardingStep("players", "بازیکنان محبوب", "برای اتفاق‌های مهم بازیکن‌ها اعلان بگیر")
 )
 
@@ -70,9 +73,9 @@ fun FavoritesOnboardingScreen(
     val step = onboardingSteps[stepIndex]
     val section = step.key
     val choices = when (section) {
-        "teams" -> teams.map { FavoriteChoice(it.id, it.name, it.logo, it.isFavorite) }
-        "leagues" -> leagues.map { FavoriteChoice(it.id, it.name, it.logo, it.isFavorite) }
-        else -> players.map { FavoriteChoice(it.id, it.name, it.portrait.ifBlank { it.teamLogo }, it.isFavorite) }
+        "teams" -> teams.map { FavoriteChoice(it.id, it.name, it.logo, it.isFavorite, it.leagueName) }
+        "leagues" -> leagues.map { FavoriteChoice(it.id, it.name, it.logo, it.isFavorite, it.country) }
+        else -> players.map { FavoriteChoice(it.id, it.name, it.portrait.ifBlank { it.teamLogo }, it.isFavorite, listOf(it.position, it.teamName).filter(String::isNotBlank).joinToString(" · ")) }
     }.sortedWith(compareByDescending<FavoriteChoice> { it.name.isIranianFootball() }.thenBy { it.name })
     val shown = choices.filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }.take(50)
     val selectedCount = choices.count { it.favorite }
@@ -140,10 +143,14 @@ fun FavoritesOnboardingScreen(
             }
             items(shown, key = { "${section}_${it.id}" }) { item ->
                 val favorite = item.favorite
+                val cardColor by animateColorAsState(
+                    if (favorite) MaterialTheme.colorScheme.primary.copy(alpha = 0.11f) else MaterialTheme.colorScheme.surface,
+                    label = "favorite-card"
+                )
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.fillMaxWidth().clickable {
+                    colors = CardDefaults.cardColors(containerColor = cardColor),
+                    modifier = Modifier.fillMaxWidth().animateContentSize().border(1.dp, if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp)).clickable {
                         when (section) {
                             "teams" -> sportsViewModel.toggleTeamFavorite(item.id, favorite)
                             "leagues" -> sportsViewModel.toggleLeagueFavorite(item.id, favorite)
@@ -155,7 +162,10 @@ fun FavoritesOnboardingScreen(
                         Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
                             Box(contentAlignment = Alignment.Center) { AsyncImage(model = item.logo, contentDescription = item.name, modifier = Modifier.size(30.dp)) }
                         }
-                        Text(item.name, modifier = Modifier.weight(1f).padding(horizontal = 12.dp), fontWeight = FontWeight.SemiBold)
+                        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(item.name, fontWeight = FontWeight.SemiBold)
+                            if (item.detail.isNotBlank()) Text(item.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        }
                         IconButton(onClick = {
                             when (section) {
                                 "teams" -> sportsViewModel.toggleTeamFavorite(item.id, favorite)

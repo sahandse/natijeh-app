@@ -82,6 +82,9 @@ import com.natijeh.ui.viewmodel.SportsViewModel
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 private val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
 private val eventAdapter = moshi.adapter<List<MatchEvent>>(
@@ -105,12 +108,19 @@ fun MatchDetailScreen(
     onNavigateToPlayer: (String) -> Unit = {}
 ) {
     val match by sportsViewModel.getMatchFlow(matchId).collectAsStateWithLifecycle(initialValue = null)
-    var selectedTab by remember { mutableStateOf("timeline") }
+    var selectedTab by remember { mutableStateOf("summary") }
+    var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     val view = LocalView.current
     val context = LocalContext.current
 
     LaunchedEffect(matchId) {
         sportsViewModel.loadMatchDetails(matchId)
+    }
+    LaunchedEffect(match?.status) {
+        while (match?.status == "SCHEDULED") {
+            nowMillis = System.currentTimeMillis()
+            delay(30_000)
+        }
     }
     DisposableEffect(match?.status, keepScreenOnLive) {
         view.keepScreenOn = keepScreenOnLive && match?.status == "LIVE"
@@ -172,6 +182,11 @@ fun MatchDetailScreen(
                     onAwayTeamClick = { onNavigateToTeam(m.awayTeamId) },
                     onLeagueClick = { onNavigateToLeague(m.leagueId) }
                 )
+                matchCountdown(m, nowMillis)?.let { countdown ->
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 10.dp)) {
+                        Text("شروع مسابقه · $countdown", modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
                 val topPerformer = remember(m.lineupsJson) {
                     runCatching { lineupsAdapter.fromJson(m.lineupsJson) }.getOrNull()?.let { lineups ->
                         (lineups.homeStarting + lineups.awayStarting).filter { it.rating > 0.0 }.maxByOrNull { it.rating }
@@ -182,16 +197,20 @@ fun MatchDetailScreen(
                 }
                 ScrollableTabRow(
                     selectedTabIndex = when (selectedTab) {
-                        "timeline" -> 0
-                        "stats" -> 1
-                        "lineups" -> 2
-                        "h2h" -> 3
+                        "summary" -> 0
+                        "timeline" -> 1
+                        "stats" -> 2
+                        "lineups" -> 3
+                        "h2h" -> 4
                         else -> 0
                     },
                     containerColor = MaterialTheme.colorScheme.background,
                     contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = 16.dp
                 ) {
+                    Tab(selected = selectedTab == "summary", onClick = { selectedTab = "summary" }) {
+                        Text("خلاصه", modifier = Modifier.padding(16.dp), color = if (selectedTab == "summary") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+                    }
                     Tab(selected = selectedTab == "timeline", onClick = { selectedTab = "timeline" }) {
                         Text("رویدادها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "timeline") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
                     }
@@ -207,6 +226,12 @@ fun MatchDetailScreen(
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
                     when (selectedTab) {
+                        "summary" -> MatchSummaryTab(
+                            match = m,
+                            events = runCatching { eventAdapter.fromJson(m.eventsJson).orEmpty() }.getOrDefault(emptyList()),
+                            topPerformer = topPerformer,
+                            onNavigateToPlayer = onNavigateToPlayer
+                        )
                         "timeline" -> TimelineTab(runCatching { eventAdapter.fromJson(m.eventsJson).orEmpty() }.getOrDefault(emptyList()), onNavigateToPlayer)
                         "stats" -> StatsTab(runCatching { statsAdapter.fromJson(m.statsJson).orEmpty() }.getOrDefault(emptyList()))
                         "lineups" -> {
@@ -232,6 +257,84 @@ fun MatchDetailScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
+        }
+    }
+}
+
+private fun matchCountdown(match: MatchEntity, nowMillis: Long): String? {
+    if (match.status != "SCHEDULED" || match.utcStart.isBlank()) return null
+    val formats = listOf("yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    val start = formats.firstNotNullOfOrNull { pattern -> runCatching { SimpleDateFormat(pattern, Locale.US).parse(match.utcStart)?.time }.getOrNull() } ?: return null
+    val remaining = start - nowMillis
+    if (remaining <= 0) return "تا لحظاتی دیگر"
+    val totalMinutes = remaining / 60_000
+    val days = totalMinutes / (24 * 60)
+    val hours = (totalMinutes % (24 * 60)) / 60
+    val minutes = totalMinutes % 60
+    return when {
+        days > 0 -> "$days روز و $hours ساعت"
+        hours > 0 -> "$hours ساعت و $minutes دقیقه"
+        else -> "$minutes دقیقه"
+    }
+}
+
+@Composable
+private fun MatchSummaryTab(match: MatchEntity, events: List<MatchEvent>, topPerformer: PlayerLineup?, onNavigateToPlayer: (String) -> Unit) {
+    val goals = events.filter { it.type == "GOAL" || it.type == "PENALTY" }
+    val cards = events.count { it.type == "CARD_RED" || it.type == "CARD_YELLOW" }
+    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("اطلاعات مسابقه", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                    SummaryInfoRow("زمان", listOf(match.date, match.time).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "—" })
+                    SummaryInfoRow("رقابت", match.leagueName.ifBlank { "—" })
+                    SummaryInfoRow("ورزشگاه", match.venue.ifBlank { "—" })
+                    SummaryInfoRow("داور", match.referee.ifBlank { "—" })
+                    if (match.attendance.isNotBlank()) SummaryInfoRow("تماشاگر", match.attendance)
+                }
+            }
+        }
+        if (goals.isNotEmpty()) {
+            item { Text("گل‌ها", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium) }
+            items(goals, key = { "goal-${it.minute}-${it.playerId}-${it.isHome}" }) { event ->
+                Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${event.minute}'", fontWeight = FontWeight.Black, modifier = Modifier.width(44.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            EventPlayerName(event.playerName, event.playerId, onNavigateToPlayer)
+                            Text(if (event.isHome) match.homeTeamName else match.awayTeamName, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Text("گل", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        topPerformer?.let { player -> item { TopPerformerBanner(player, onNavigateToPlayer) } }
+        if (events.isNotEmpty()) item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SummaryMetric(goals.size.toString(), "گل", Modifier.weight(1f))
+                SummaryMetric(cards.toString(), "کارت", Modifier.weight(1f))
+                SummaryMetric(events.count { it.type == "SUBSTITUTION" }.toString(), "تعویض", Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryInfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f).padding(start = 12.dp))
+    }
+}
+
+@Composable
+private fun SummaryMetric(value: String, label: String, modifier: Modifier) {
+    Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.surface, modifier = modifier) {
+        Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

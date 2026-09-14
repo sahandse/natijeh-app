@@ -252,7 +252,11 @@ class SportsRepository(
         imageLoader.diskCache?.clear()
     }
 
-    data class ReleaseInfo(val version: String, val pageUrl: String, val apkUrl: String)
+    suspend fun offlineImageBytes(): Long = withContext(Dispatchers.IO) {
+        appContext.cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    }
+
+    data class ReleaseInfo(val version: String, val pageUrl: String, val apkUrl: String, val notes: String = "")
 
     suspend fun latestRelease(): ReleaseInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
@@ -270,7 +274,8 @@ class SportsRepository(
             val apkUrl = Regex("\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]+\\.apk)\\\"")
                 .find(json)?.groupValues?.get(1)
                 ?: error("APK asset missing")
-            ReleaseInfo(tag.removePrefix("v"), url, apkUrl)
+            val notes = runCatching { JSONObject(json).optString("body").take(1_500) }.getOrDefault("")
+            ReleaseInfo(tag.removePrefix("v"), url, apkUrl, notes)
         }
     }
 

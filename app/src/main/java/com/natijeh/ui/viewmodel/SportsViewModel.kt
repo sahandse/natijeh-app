@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
@@ -32,13 +34,16 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
         val updateDownloading: Boolean = false,
         val updateProgress: Int? = null,
         val updateApkUri: String? = null,
+        val releaseNotes: String? = null,
         val downloading: Boolean = false,
         val downloadMessage: String? = null,
-        val downloadProgress: Int? = null
+        val downloadProgress: Int? = null,
+        val offlineBytes: Long = 0
     )
 
     private val _maintenance = MutableStateFlow(MaintenanceState())
     val maintenance: StateFlow<MaintenanceState> = _maintenance.asStateFlow()
+    private var offlineDownloadJob: Job? = null
 
     val datesList: List<Pair<String, Int>> = listOf(
         "۲ روز قبل" to -2,
@@ -105,6 +110,7 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
     init {
         repository.startLiveUpdates()
         refresh(forceAll = true)
+        refreshOfflineSize()
     }
 
     fun selectDate(offset: Int) {
@@ -163,6 +169,7 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
                     updateMessage = if (newer) "نسخه ${release.version} آماده دانلود است" else "آخرین نسخه نصب است",
                     updateUrl = if (newer) release.apkUrl else null,
                     updateVersion = if (newer) release.version else null,
+                    releaseNotes = if (newer) release.notes else null,
                     updateProgress = null,
                     updateApkUri = null
                 )
@@ -189,24 +196,37 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
     }
 
     fun downloadOfflineData() {
-        viewModelScope.launch {
+        offlineDownloadJob?.cancel()
+        offlineDownloadJob = viewModelScope.launch {
             _maintenance.value = _maintenance.value.copy(downloading = true, downloadMessage = "در حال دریافت داده و تصاویر…", downloadProgress = 0)
             try {
                 val count = repository.downloadOfflineData { progress ->
                     _maintenance.value = _maintenance.value.copy(downloadProgress = progress)
                 }
-                _maintenance.value = _maintenance.value.copy(downloading = false, downloadProgress = 100, downloadMessage = "$count تصویر و تازه‌ترین داده‌ها ذخیره شد")
+                _maintenance.value = _maintenance.value.copy(downloading = false, downloadProgress = 100, downloadMessage = "$count تصویر و تازه‌ترین داده‌ها ذخیره شد", offlineBytes = repository.offlineImageBytes())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 _maintenance.value = _maintenance.value.copy(downloading = false, downloadProgress = null, downloadMessage = "دانلود کامل نشد؛ اتصال اینترنت را بررسی کنید")
             }
         }
     }
 
+    fun cancelOfflineDownload() {
+        offlineDownloadJob?.cancel()
+        offlineDownloadJob = null
+        _maintenance.value = _maintenance.value.copy(downloading = false, downloadProgress = null, downloadMessage = "دانلود متوقف شد؛ برای ادامه دوباره بزنید")
+    }
+
+    private fun refreshOfflineSize() {
+        viewModelScope.launch { _maintenance.value = _maintenance.value.copy(offlineBytes = repository.offlineImageBytes()) }
+    }
+
     fun clearOfflineImages() {
         viewModelScope.launch {
             runCatching { repository.clearOfflineImages() }
                 .onSuccess {
-                    _maintenance.value = _maintenance.value.copy(downloadMessage = "حافظه تصاویر آفلاین پاک شد")
+                    _maintenance.value = _maintenance.value.copy(downloadMessage = "حافظه تصاویر آفلاین پاک شد", offlineBytes = 0)
                 }
                 .onFailure {
                     _maintenance.value = _maintenance.value.copy(downloadMessage = "پاک‌کردن حافظه تصاویر ناموفق بود")

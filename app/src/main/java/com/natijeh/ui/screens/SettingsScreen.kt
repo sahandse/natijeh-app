@@ -38,6 +38,8 @@ import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -52,6 +54,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +85,17 @@ fun SettingsScreen(
     val maintenance by sportsViewModel.maintenance.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val colors = MaterialTheme.colorScheme
+    var confirmClear by remember { mutableStateOf(false) }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("پاک‌کردن تصاویر آفلاین؟") },
+            text = { Text("علاقه‌مندی‌ها و اطلاعات مسابقات حذف نمی‌شوند؛ فقط کش تصاویر پاک خواهد شد.") },
+            confirmButton = { TextButton(onClick = { confirmClear = false; sportsViewModel.clearOfflineImages() }) { Text("پاک‌کردن") } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("انصراف") } }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -204,19 +220,21 @@ fun SettingsScreen(
             SettingsCard {
                 SettingAction(
                     icon = Icons.Outlined.CloudDownload,
-                    title = "دانلود داده برای آفلاین",
+                    title = if (maintenance.downloading) "توقف دانلود محتوا" else "دانلود داده برای آفلاین",
                     subtitle = maintenance.downloadMessage ?: "داده‌ها و تصاویر عمومی را یک‌بار ذخیره کن",
-                    enabled = !maintenance.downloading,
+                    enabled = true,
                     progress = maintenance.downloadProgress,
-                    onClick = sportsViewModel::downloadOfflineData
+                    onClick = { if (maintenance.downloading) sportsViewModel.cancelOfflineDownload() else sportsViewModel.downloadOfflineData() }
                 )
+                Hairline()
+                AboutRow("فضای داده آفلاین", formatBytes(maintenance.offlineBytes))
                 Hairline()
                 SettingAction(
                     icon = Icons.Outlined.DeleteSweep,
                     title = "پاک‌کردن تصاویر آفلاین",
                     subtitle = "داده‌های مسابقات و علاقه‌مندی‌ها باقی می‌مانند",
                     enabled = !maintenance.downloading,
-                    onClick = sportsViewModel::clearOfflineImages
+                    onClick = { confirmClear = true }
                 )
             }
 
@@ -245,10 +263,42 @@ fun SettingsScreen(
                         }
                     }
                 )
+                maintenance.releaseNotes?.takeIf { it.isNotBlank() }?.let { notes ->
+                    Hairline()
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("تغییرات نسخه ${maintenance.updateVersion.orEmpty()}", fontWeight = FontWeight.Bold)
+                        Text(notes, maxLines = 6, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.PhoneAndroid,
+                    title = "صفحه رسمی پروژه",
+                    subtitle = "GitHub · sahandse/natijeh-app",
+                    enabled = true,
+                    onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/sahandse/natijeh-app"))) } }
+                )
+                Hairline()
+                SettingAction(
+                    icon = Icons.Outlined.Notifications,
+                    title = "گزارش خطا و بازخورد",
+                    subtitle = "ارسال گزارش همراه نسخه و مدل دستگاه",
+                    enabled = true,
+                    onClick = {
+                        val body = "نسخه: ${BuildConfig.VERSION_NAME}\nدستگاه: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nاندروید: ${android.os.Build.VERSION.RELEASE}\n\nشرح مشکل:\n"
+                        runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:?subject=Natijeh feedback&body=${Uri.encode(body)}")), "ارسال بازخورد")) }
+                    }
+                )
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes <= 0 -> "خالی"
+    bytes < 1024 * 1024 -> "${bytes / 1024} کیلوبایت"
+    else -> String.format("%.1f مگابایت", bytes / (1024.0 * 1024.0))
 }
 
 @Composable
