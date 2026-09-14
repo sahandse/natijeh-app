@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -92,8 +93,10 @@ import coil.request.ImageRequest
 import com.natijeh.R
 import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.MatchEntity
+import com.natijeh.data.model.MatchEvent
 import com.natijeh.data.model.NewsEntity
 import com.natijeh.data.model.PlayerEntity
+import com.natijeh.data.model.StatItem
 import com.natijeh.data.model.TeamEntity
 import com.natijeh.data.util.MatchAlertFormatter
 import com.natijeh.ui.theme.LiveRed
@@ -101,6 +104,16 @@ import com.natijeh.ui.theme.PulseDot
 import com.natijeh.ui.theme.natijehCardElevation
 import com.natijeh.ui.theme.shimmer
 import com.natijeh.ui.viewmodel.SportsViewModel
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private val dashboardMoshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+private val dashboardEventAdapter = dashboardMoshi.adapter<List<MatchEvent>>(Types.newParameterizedType(List::class.java, MatchEvent::class.java))
+private val dashboardStatAdapter = dashboardMoshi.adapter<List<StatItem>>(Types.newParameterizedType(List::class.java, StatItem::class.java))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -625,50 +638,292 @@ fun LiveTabContent(
     compactCards: Boolean = true
 ) {
     val liveMatches by viewModel.liveMatches.collectAsStateWithLifecycle()
+    val allMatches by viewModel.allMatches.collectAsStateWithLifecycle()
     val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
     val favoriteLeagues by viewModel.favoriteLeagues.collectAsStateWithLifecycle()
-    var onlyFavorites by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (liveMatches.isNotEmpty()) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+    var filter by remember { mutableStateOf("all") }
+    var collapsedLeagues by remember { mutableStateOf(setOf<String>()) }
+    val favoriteTeamIds = favoriteTeams.map { it.id }.toSet()
+    val favoriteLeagueIds = favoriteLeagues.map { it.id }.toSet()
+    val eventMap = remember(liveMatches) {
+        liveMatches.associate { match -> match.id to runCatching { dashboardEventAdapter.fromJson(match.eventsJson).orEmpty() }.getOrDefault(emptyList()) }
+    }
+    val visible = remember(liveMatches, filter, favoriteTeamIds, favoriteLeagueIds, eventMap) {
+        liveMatches.filter { match ->
+            when (filter) {
+                "favorites" -> MatchAlertFormatter.isWatched(match, favoriteTeamIds, favoriteLeagueIds)
+                "goals" -> eventMap[match.id].orEmpty().any { it.type == "GOAL" || it.type == "PENALTY" }
+                "first" -> match.minute in 1..45 || match.statusTitle.contains("نیمه اول")
+                "second" -> match.minute in 46..90 || match.statusTitle.contains("نیمه دوم")
+                "extra" -> match.minute > 90 || match.statusTitle.contains("اضافه")
+                else -> true
+            }
+        }
+    }
+    val featured = remember(liveMatches, favoriteTeamIds, favoriteLeagueIds) {
+        liveMatches.firstOrNull { it.homeTeamId in favoriteTeamIds || it.awayTeamId in favoriteTeamIds }
+            ?: liveMatches.firstOrNull { it.leagueId in favoriteLeagueIds }
+            ?: liveMatches.firstOrNull()
+    }
+    val latestEvents = remember(liveMatches, eventMap) {
+        liveMatches.flatMap { match -> eventMap[match.id].orEmpty().map { match to it } }
+            .filter { (_, event) -> event.type in setOf("GOAL", "PENALTY", "CARD_RED", "VAR_REVIEW") }
+            .sortedByDescending { (_, event) -> event.minute }
+            .take(10)
+    }
+    val grouped = remember(visible, featured) { SportsMapper.groupMatchesByLeague(visible.filterNot { it.id == featured?.id }) }
+    val nextMatch = remember(allMatches) { allMatches.filter { it.status == "SCHEDULED" }.minByOrNull { it.utcStart.ifBlank { it.time } } }
+    val lastUpdated = liveMatches.maxOfOrNull { it.lastUpdatedMillis }?.takeIf { it > 0 }
+        ?.let { SimpleDateFormat("HH:mm", Locale("fa")).format(Date(it)) } ?: "—"
+
+    PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            PulseDot(size = 9.dp)
-                            Text("همین حالا زنده", color = LiveRed, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PulseDot(size = 10.dp)
+                            Text("مسابقات زنده", color = LiveRed, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                         }
-                        Text("نتیجه لحظه‌ای مسابقات", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text("بروزرسانی خودکار · آخرین دریافت $lastUpdated", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
-                    Text("${liveMatches.size} بازی", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Surface(shape = RoundedCornerShape(14.dp), color = LiveRed.copy(alpha = 0.12f)) {
+                            Text("${liveMatches.size} بازی", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), color = LiveRed, fontWeight = FontWeight.Black)
+                        }
+                        IconButton(onClick = { viewModel.refresh() }, enabled = !isRefreshing) {
+                            if (isRefreshing) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            else Icon(Icons.Default.Refresh, contentDescription = "بروزرسانی زنده")
+                        }
+                    }
+                }
+            }
+            featured?.let { match ->
+                item(key = "live-featured-${match.id}") {
+                    FeaturedLiveMatch(match, eventMap[match.id].orEmpty(), onNavigateToMatch, onNavigateToTeam, onNavigateToLeague) {
+                        viewModel.toggleMatchFavorite(match.id, match.isFavorite)
+                    }
+                }
+            }
+            if (latestEvents.isNotEmpty()) {
+                item { HomeSectionTitle("اتفاقات فوری", "آخرین لحظه‌های مهم") }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(latestEvents, key = { "ticker-${it.first.id}-${it.second.hashCode()}" }) { (match, event) ->
+                            LiveEventChip(match, event) { onNavigateToMatch(match.id) }
+                        }
+                    }
+                }
+            }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(listOf("all" to "همه", "favorites" to "محبوب‌ها", "goals" to "دارای گل", "first" to "نیمه اول", "second" to "نیمه دوم", "extra" to "وقت اضافه")) { (key, label) ->
+                        FilterChip(selected = filter == key, onClick = { filter = key }, label = { Text(label) })
+                    }
+                }
+            }
+            if (liveMatches.isEmpty()) {
+                item { LiveEmptyState(nextMatch, onNavigateToMatch) }
+            } else if (visible.isEmpty()) {
+                item { EmptyState("مسابقه‌ای با این فیلتر پیدا نشد.") }
+            } else {
+                grouped.forEach { (league, leagueMatches) ->
+                    val collapseKey = league.id.ifBlank { league.name }
+                    item(key = "live-league-$collapseKey") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable {
+                                collapsedLeagues = if (collapseKey in collapsedLeagues) collapsedLeagues - collapseKey else collapsedLeagues + collapseKey
+                            }.padding(horizontal = 10.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(9.dp)
+                        ) {
+                            if (league.logo.isNotBlank()) AsyncImage(league.logo, league.name, modifier = Modifier.size(22.dp))
+                            Text(league.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                            Text("${leagueMatches.size} زنده", color = LiveRed, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Text(if (collapseKey in collapsedLeagues) "+" else "−", style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
+                    if (collapseKey !in collapsedLeagues) {
+                        items(leagueMatches, key = { "live-panel-${it.id}" }) { match ->
+                            LiveMatchPanel(
+                                match = match,
+                                events = eventMap[match.id].orEmpty(),
+                                compact = compactCards,
+                                onMatch = { onNavigateToMatch(match.id) },
+                                onHomeTeam = { onNavigateToTeam(match.homeTeamId) },
+                                onAwayTeam = { onNavigateToTeam(match.awayTeamId) },
+                                onLeague = { onNavigateToLeague(match.leagueId) },
+                                onNotify = { viewModel.toggleMatchFavorite(match.id, match.isFavorite) }
+                            )
+                        }
+                    }
                 }
             }
         }
-        GroupedMatchList(
-            matches = liveMatches,
-            isRefreshing = isRefreshing,
-            emptyMessage = if (onlyFavorites) "بازی زنده‌ای از علاقه‌مندی‌ها در جریان نیست." else "در حال حاضر هیچ مسابقه‌ای به صورت زنده برگزار نمی‌شود.",
-            onlyFavorites = onlyFavorites,
-            favoriteTeamIds = favoriteTeams.map { it.id }.toSet(),
-            favoriteLeagueIds = favoriteLeagues.map { it.id }.toSet(),
-            onRefresh = { viewModel.refresh() },
-            onMatchClick = onNavigateToMatch,
-            onTeamClick = onNavigateToTeam,
-            onLeagueClick = onNavigateToLeague,
-            onFavoriteToggle = { match -> viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
-            onOnlyFavoritesChange = { onlyFavorites = it },
-            compactCards = compactCards
-        )
     }
+}
+
+@Composable
+private fun FeaturedLiveMatch(
+    match: MatchEntity,
+    events: List<MatchEvent>,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit,
+    onNotify: () -> Unit
+) {
+    val latestEvent = events.lastOrNull()
+    Card(
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth().border(1.dp, LiveRed.copy(alpha = 0.55f), RoundedCornerShape(26.dp)).clickable { onNavigateToMatch(match.id) }
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(LiveRed.copy(alpha = 0.12f), Color.Transparent))).padding(18.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(modifier = Modifier.clickable { onNavigateToLeague(match.leagueId) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (match.leagueLogo.isNotBlank()) AsyncImage(match.leagueLogo, match.leagueName, modifier = Modifier.size(22.dp))
+                    Text(match.leagueName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PulseDot(size = 8.dp)
+                    Text(match.liveTime.ifBlank { "${match.minute}'" }.ifBlank { "زنده" }, color = LiveRed, fontWeight = FontWeight.Black)
+                    IconButton(onClick = onNotify, modifier = Modifier.size(38.dp)) {
+                        Icon(if (match.isFavorite) Icons.Outlined.Notifications else Icons.Outlined.Notifications, "اعلان مسابقه", tint = if (match.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                HomeFeaturedTeam(match.homeTeamName, match.homeTeamLogo, Modifier.weight(1f)) { onNavigateToTeam(match.homeTeamId) }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    AnimatedContent(targetState = "${match.homeScore} - ${match.awayScore}", label = "live-score") { score ->
+                        Text(score, color = LiveRed, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
+                    }
+                    Text(match.statusTitle.ifBlank { "در جریان" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                }
+                HomeFeaturedTeam(match.awayTeamName, match.awayTeamLogo, Modifier.weight(1f)) { onNavigateToTeam(match.awayTeamId) }
+            }
+            latestEvent?.let { event ->
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.background.copy(alpha = 0.72f), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Text(liveEventIcon(event.type), style = MaterialTheme.typography.titleMedium)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(liveEventTitle(event), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            Text(if (event.isHome) match.homeTeamName else match.awayTeamName, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Text("${event.minute}'", color = LiveRed, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+            if (events.isNotEmpty()) LiveEventTimeline(events, match.minute)
+        }
+    }
+}
+
+@Composable
+private fun LiveEventChip(match: MatchEntity, event: MatchEvent, onClick: () -> Unit) {
+    Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.width(190.dp).clickable(onClick = onClick)) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Text(liveEventIcon(event.type), style = MaterialTheme.typography.titleMedium)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(liveEventTitle(event), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                Text("${match.homeTeamName} - ${match.awayTeamName}", maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            }
+            Text("${event.minute}'", color = LiveRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+@Composable
+private fun LiveMatchPanel(
+    match: MatchEntity,
+    events: List<MatchEvent>,
+    compact: Boolean,
+    onMatch: () -> Unit,
+    onHomeTeam: () -> Unit,
+    onAwayTeam: () -> Unit,
+    onLeague: () -> Unit,
+    onNotify: () -> Unit
+) {
+    val stats = remember(match.statsJson) { runCatching { dashboardStatAdapter.fromJson(match.statsJson).orEmpty() }.getOrDefault(emptyList()) }
+    val quickStats = stats.filter { stat -> stat.title.contains("مالکیت") || stat.title.contains("شوت") }.take(2)
+    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = LiveRed.copy(alpha = 0.055f)), modifier = Modifier.fillMaxWidth().border(1.dp, LiveRed.copy(alpha = 0.24f), RoundedCornerShape(18.dp))) {
+        Column {
+            MatchCard(match, onMatch, onNotify, onHomeTeam, onAwayTeam, onLeague, showLeague = false, compact = compact)
+            val latest = events.lastOrNull()
+            if (latest != null || quickStats.isNotEmpty()) {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    latest?.let {
+                        Text("آخرین اتفاق: ${liveEventTitle(it)} · ${it.minute}'", maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (it.type == "CARD_RED") LiveRed else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                    }
+                    quickStats.forEach { stat ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(stat.home, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                            Text(stat.title, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            Text(stat.away, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveEventTimeline(events: List<MatchEvent>, currentMinute: Int) {
+    val important = events.filter { it.type in setOf("GOAL", "PENALTY", "CARD_RED", "CARD_YELLOW", "VAR_REVIEW") }.takeLast(7)
+    if (important.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+            Box(modifier = Modifier.fillMaxWidth((currentMinute.coerceIn(0, 120) / 120f).coerceAtLeast(0.02f)).height(4.dp).background(LiveRed))
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            important.forEach { event ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(liveEventIcon(event.type), style = MaterialTheme.typography.labelMedium)
+                    Text("${event.minute}'", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveEmptyState(nextMatch: MatchEntity?, onNavigateToMatch: (String) -> Unit) {
+    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(64.dp)) {
+                Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.SportsSoccer, null, modifier = Modifier.size(30.dp)) }
+            }
+            Text("فعلاً مسابقه‌ای زنده نیست", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+            nextMatch?.let { match ->
+                Text("نزدیک‌ترین بازی", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxWidth().clickable { onNavigateToMatch(match.id) }) {
+                    Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("${match.homeTeamName} - ${match.awayTeamName}", modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
+                        Text(match.time.ifBlank { match.date }, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun liveEventIcon(type: String): String = when (type) {
+    "GOAL", "PENALTY" -> "⚽"
+    "CARD_RED" -> "🟥"
+    "CARD_YELLOW" -> "🟨"
+    "VAR_REVIEW" -> "VAR"
+    else -> "•"
+}
+
+private fun liveEventTitle(event: MatchEvent): String = when (event.type) {
+    "GOAL" -> "گل ${event.playerName}"
+    "PENALTY" -> "پنالتی ${event.playerName}"
+    "CARD_RED" -> "کارت قرمز ${event.playerName}"
+    "CARD_YELLOW" -> "کارت زرد ${event.playerName}"
+    "VAR_REVIEW" -> "بررسی VAR"
+    "SUBSTITUTION" -> "تعویض ${event.playerName}"
+    else -> event.detail.ifBlank { "اتفاق مسابقه" }
 }
 
 @Composable
