@@ -12,6 +12,7 @@ import com.natijeh.data.model.NewsEntity
 import com.natijeh.data.model.PlayerEntity
 import com.natijeh.data.model.NotificationHistoryEntity
 import com.natijeh.data.model.TeamEntity
+import com.natijeh.data.model.ProfileKnowledgeEntity
 
 @Database(
     entities = [
@@ -20,9 +21,10 @@ import com.natijeh.data.model.TeamEntity
         LeagueEntity::class,
         NewsEntity::class,
         PlayerEntity::class,
-        NotificationHistoryEntity::class
+        NotificationHistoryEntity::class,
+        ProfileKnowledgeEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -39,7 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "natijeh_sports_db"
                 )
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
@@ -58,6 +60,12 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `notification_history` ADD COLUMN `isRead` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `profile_knowledge` (`key` TEXT NOT NULL, `entityType` TEXT NOT NULL, `entityId` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `imageUrl` TEXT NOT NULL, `articleUrl` TEXT NOT NULL, `source` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`key`))")
             }
         }
     }

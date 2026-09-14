@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.natijeh.data.mapper.SportsMapper
 import com.natijeh.data.model.SquadPlayer
+import com.natijeh.data.model.ProfileKnowledgeEntity
 import com.natijeh.data.model.TeamEntity
 import com.natijeh.data.model.TeamResultMatch
 import com.natijeh.ui.theme.LiveRed
@@ -107,12 +108,16 @@ fun TeamDetailScreen(
     onNavigateToPlayer: (String) -> Unit = {}
 ) {
     val team by viewModel.getTeamFlow(teamId).collectAsStateWithLifecycle(initialValue = null)
+    val knowledge by viewModel.getProfileKnowledgeFlow("team", teamId).collectAsStateWithLifecycle(initialValue = null)
     val favoritePlayers by viewModel.favoritePlayers.collectAsStateWithLifecycle()
     val favoriteIds = remember(favoritePlayers) { favoritePlayers.map { it.id }.toSet() }
     var selectedTab by remember { mutableStateOf("overview") }
 
     LaunchedEffect(teamId) {
         viewModel.loadTeamDetails(teamId)
+    }
+    LaunchedEffect(teamId, team?.name) {
+        team?.name?.let { viewModel.loadProfileKnowledge("team", teamId, it) }
     }
 
     Scaffold(
@@ -170,7 +175,7 @@ fun TeamDetailScreen(
                     }
                 }
                 when (selectedTab) {
-                    "overview" -> TeamOverviewTab(t, recent, squad, onNavigateToMatch, onNavigateToPlayer)
+                    "overview" -> TeamOverviewTab(t, recent, squad, knowledge, onNavigateToMatch, onNavigateToPlayer)
                     "matches" -> TeamMatchesTab(teamId = t.id, matches = recent, onNavigateToMatch = onNavigateToMatch)
                     "squad" -> TeamSquadTab(
                         squad = squad,
@@ -194,6 +199,7 @@ private fun TeamOverviewTab(
     team: TeamEntity,
     matches: List<TeamResultMatch>,
     squad: List<SquadPlayer>,
+    knowledge: ProfileKnowledgeEntity?,
     onNavigateToMatch: (String) -> Unit,
     onNavigateToPlayer: (String) -> Unit
 ) {
@@ -255,6 +261,9 @@ private fun TeamOverviewTab(
                     TeamInfoRow("آرایش", team.formation.ifBlank { "—" })
                 }
             }
+        }
+        knowledge?.let { info ->
+            item { ProfileKnowledgeCard(info, "تاریخچه و معرفی باشگاه") }
         }
     }
 }

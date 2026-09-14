@@ -89,10 +89,14 @@ fun LeagueDetailScreen(
     onNavigateToPlayer: (String) -> Unit = {}
 ) {
     val league by viewModel.getLeagueFlow(leagueId).collectAsStateWithLifecycle(initialValue = null)
+    val knowledge by viewModel.getProfileKnowledgeFlow("league", leagueId).collectAsStateWithLifecycle(initialValue = null)
     var selectedTab by remember { mutableStateOf("table") }
 
     LaunchedEffect(leagueId) {
         viewModel.loadLeagueDetails(leagueId)
+    }
+    LaunchedEffect(leagueId, league?.name) {
+        league?.name?.let { viewModel.loadProfileKnowledge("league", leagueId, it) }
     }
 
     Scaffold(
@@ -121,9 +125,9 @@ fun LeagueDetailScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         league?.let { l ->
-            val standings = standingsAdapter.fromJson(l.standingsJson).orEmpty()
-            val scorers = scorersAdapter.fromJson(l.scorersJson).orEmpty()
-            val fixtures = fixturesAdapter.fromJson(l.fixturesJson).orEmpty()
+            val standings = remember(l.standingsJson) { runCatching { standingsAdapter.fromJson(l.standingsJson).orEmpty() }.getOrDefault(emptyList()) }
+            val scorers = remember(l.scorersJson) { runCatching { scorersAdapter.fromJson(l.scorersJson).orEmpty() }.getOrDefault(emptyList()) }
+            val fixtures = remember(l.fixturesJson) { runCatching { fixturesAdapter.fromJson(l.fixturesJson).orEmpty() }.getOrDefault(emptyList()) }
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
                 Card(
                     shape = RoundedCornerShape(24.dp),
@@ -161,7 +165,8 @@ fun LeagueDetailScreen(
                     selectedTabIndex = when (selectedTab) {
                         "table" -> 0
                         "scorers" -> 1
-                        else -> 2
+                        "week" -> 2
+                        else -> 3
                     },
                     containerColor = MaterialTheme.colorScheme.background,
                     contentColor = MaterialTheme.colorScheme.primary,
@@ -176,11 +181,21 @@ fun LeagueDetailScreen(
                     Tab(selected = selectedTab == "week", onClick = { selectedTab = "week" }) {
                         Text("برنامه هفته", modifier = Modifier.padding(16.dp), color = if (selectedTab == "week") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    Tab(selected = selectedTab == "info", onClick = { selectedTab = "info" }) {
+                        Text("معرفی", modifier = Modifier.padding(16.dp), color = if (selectedTab == "info") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 when (selectedTab) {
                     "scorers" -> ScorersTab(scorers, onNavigateToTeam, onNavigateToPlayer)
                     "week" -> FixturesTab(fixtures, onNavigateToMatch, onNavigateToTeam)
+                    "info" -> if (knowledge != null) {
+                        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            item { ProfileKnowledgeCard(knowledge!!, "تاریخچه و اطلاعات لیگ") }
+                        }
+                    } else {
+                        EmptyState(message = "اطلاعات دانشنامه‌ای این لیگ در حال دریافت است.")
+                    }
                     else -> StandingsTab(standings, onNavigateToTeam)
                 }
             }

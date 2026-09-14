@@ -1,5 +1,6 @@
 package com.natijeh.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Card
@@ -58,6 +60,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
@@ -104,6 +107,7 @@ fun MatchDetailScreen(
     val match by sportsViewModel.getMatchFlow(matchId).collectAsStateWithLifecycle(initialValue = null)
     var selectedTab by remember { mutableStateOf("timeline") }
     val view = LocalView.current
+    val context = LocalContext.current
 
     LaunchedEffect(matchId) {
         sportsViewModel.loadMatchDetails(matchId)
@@ -124,6 +128,21 @@ fun MatchDetailScreen(
                 },
                 actions = {
                     match?.let { current ->
+                        IconButton(onClick = {
+                            val score = if (current.status == "SCHEDULED") current.time else "${current.homeScore} - ${current.awayScore}"
+                            val text = "${current.homeTeamName} $score ${current.awayTeamName}\n${current.leagueName}\nنتیجه"
+                            context.startActivity(
+                                Intent.createChooser(
+                                    Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, text)
+                                    },
+                                    "اشتراک مسابقه"
+                                )
+                            )
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = "اشتراک مسابقه")
+                        }
                         IconButton(onClick = { sportsViewModel.toggleMatchFavorite(current.id, current.isFavorite) }) {
                             Icon(
                                 imageVector = if (current.isFavorite) Icons.Outlined.Notifications else Icons.Outlined.NotificationsNone,
@@ -154,7 +173,7 @@ fun MatchDetailScreen(
                     onLeagueClick = { onNavigateToLeague(m.leagueId) }
                 )
                 val topPerformer = remember(m.lineupsJson) {
-                    lineupsAdapter.fromJson(m.lineupsJson)?.let { lineups ->
+                    runCatching { lineupsAdapter.fromJson(m.lineupsJson) }.getOrNull()?.let { lineups ->
                         (lineups.homeStarting + lineups.awayStarting).filter { it.rating > 0.0 }.maxByOrNull { it.rating }
                     }
                 }
@@ -188,10 +207,10 @@ fun MatchDetailScreen(
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
                     when (selectedTab) {
-                        "timeline" -> TimelineTab(eventAdapter.fromJson(m.eventsJson).orEmpty(), onNavigateToPlayer)
-                        "stats" -> StatsTab(statsAdapter.fromJson(m.statsJson).orEmpty())
+                        "timeline" -> TimelineTab(runCatching { eventAdapter.fromJson(m.eventsJson).orEmpty() }.getOrDefault(emptyList()), onNavigateToPlayer)
+                        "stats" -> StatsTab(runCatching { statsAdapter.fromJson(m.statsJson).orEmpty() }.getOrDefault(emptyList()))
                         "lineups" -> {
-                            val lineups = lineupsAdapter.fromJson(m.lineupsJson)
+                            val lineups = runCatching { lineupsAdapter.fromJson(m.lineupsJson) }.getOrNull()
                             if (lineups != null && (lineups.homeStarting.isNotEmpty() || lineups.awayStarting.isNotEmpty())) {
                                 LineupsTab(lineups, m.homeTeamName, m.awayTeamName, onNavigateToPlayer)
                             } else {
@@ -199,7 +218,7 @@ fun MatchDetailScreen(
                             }
                         }
                         "h2h" -> {
-                            val h2h = h2hAdapter.fromJson(m.h2hJson)
+                            val h2h = runCatching { h2hAdapter.fromJson(m.h2hJson) }.getOrNull()
                             if (h2h != null && h2h.pastMatches.isNotEmpty()) {
                                 H2HTab(h2h, m.homeTeamName, m.awayTeamName)
                             } else {

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.natijeh.data.model.PlayerEntity
+import com.natijeh.ui.theme.RankGold
 import com.natijeh.ui.theme.natijehCardElevation
 import com.natijeh.ui.viewmodel.SportsViewModel
 
@@ -59,9 +60,13 @@ fun PlayerDetailScreen(
     onNavigateToTeam: (String) -> Unit
 ) {
     val player by viewModel.getPlayerFlow(playerId).collectAsStateWithLifecycle(initialValue = null)
+    val knowledge by viewModel.getProfileKnowledgeFlow("player", playerId).collectAsStateWithLifecycle(initialValue = null)
 
     LaunchedEffect(playerId) {
         viewModel.loadPlayer(playerId)
+    }
+    LaunchedEffect(playerId, player?.name) {
+        player?.name?.let { viewModel.loadProfileKnowledge("player", playerId, it) }
     }
 
     Scaffold(
@@ -93,6 +98,9 @@ fun PlayerDetailScreen(
                     }
                 )
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (p.isLionelMessi()) {
+                        MessiLegendCard()
+                    }
                     Text("عملکرد فصل", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         PlayerMetric("گل", p.goals.toString(), Modifier.weight(1f))
@@ -112,11 +120,41 @@ fun PlayerDetailScreen(
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )
+                    knowledge?.let { ProfileKnowledgeCard(it, "زندگینامه و افتخارات") }
                 }
             }
         } ?: run {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+}
+
+private fun PlayerEntity.isLionelMessi(): Boolean {
+    val normalized = name.lowercase().replace('‌', ' ').trim()
+    return normalized in setOf("لیونل مسی", "لئو مسی", "مسی", "lionel messi", "leo messi")
+}
+
+@Composable
+private fun MessiLegendCard() {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = RankGold.copy(alpha = 0.15f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("LIONEL MESSI", fontWeight = FontWeight.Black, color = RankGold)
+                Text("اسطوره فوتبال", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PlayerHeaderBadge("LEGEND")
+                PlayerHeaderBadge("GOAT")
             }
         }
     }

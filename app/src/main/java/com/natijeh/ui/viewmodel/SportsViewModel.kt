@@ -252,6 +252,11 @@ class SportsViewModel(private val repository: SportsRepository) : ViewModel() {
     fun getTeamFlow(id: String) = repository.getTeamByIdFlow(id)
     fun getLeagueFlow(id: String) = repository.getLeagueByIdFlow(id)
     fun getPlayerFlow(id: String) = repository.getPlayerByIdFlow(id)
+    fun getProfileKnowledgeFlow(type: String, id: String) = repository.getProfileKnowledgeFlow(type, id)
+
+    fun loadProfileKnowledge(type: String, id: String, displayName: String) {
+        viewModelScope.launch { runCatching { repository.loadProfileKnowledge(type, id, displayName) } }
+    }
 
     fun loadMatchDetails(id: String) {
         viewModelScope.launch {

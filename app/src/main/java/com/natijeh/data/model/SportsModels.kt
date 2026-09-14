@@ -261,3 +261,16 @@ data class NotificationHistoryEntity(
     val createdAt: Long,
     val isRead: Boolean = false
 )
+
+@Entity(tableName = "profile_knowledge")
+data class ProfileKnowledgeEntity(
+    @PrimaryKey val key: String,
+    val entityType: String,
+    val entityId: String,
+    val title: String,
+    val description: String,
+    val imageUrl: String = "",
+    val articleUrl: String = "",
+    val source: String = "ویکی‌پدیا",
+    val updatedAt: Long = 0
+)

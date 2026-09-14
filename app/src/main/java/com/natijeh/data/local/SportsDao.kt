@@ -9,11 +9,21 @@ import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.NewsEntity
 import com.natijeh.data.model.PlayerEntity
 import com.natijeh.data.model.NotificationHistoryEntity
+import com.natijeh.data.model.ProfileKnowledgeEntity
 import com.natijeh.data.model.TeamEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SportsDao {
+    @Query("SELECT * FROM profile_knowledge WHERE `key` = :key LIMIT 1")
+    fun getProfileKnowledge(key: String): Flow<ProfileKnowledgeEntity?>
+
+    @Query("SELECT * FROM profile_knowledge WHERE `key` = :key LIMIT 1")
+    suspend fun getProfileKnowledgeOnce(key: String): ProfileKnowledgeEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProfileKnowledge(item: ProfileKnowledgeEntity)
+
     @Query("SELECT * FROM notification_history ORDER BY createdAt DESC LIMIT 100")
     fun getNotificationHistory(): Flow<List<NotificationHistoryEntity>>
 

@@ -16,6 +16,7 @@ import com.natijeh.data.model.MatchEntity
 import com.natijeh.data.model.MatchLineups
 import com.natijeh.data.model.NewsEntity
 import com.natijeh.data.model.PlayerEntity
+import com.natijeh.data.model.ProfileKnowledgeEntity
 import com.natijeh.data.model.NotificationHistoryEntity
 import com.natijeh.data.model.MatchAlert
 import com.natijeh.data.model.TeamEntity
@@ -47,6 +48,8 @@ import java.io.File
 import java.io.FileOutputStream
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import org.json.JSONObject
 
 class SportsRepository(
     private val dao: SportsDao,
@@ -106,6 +109,56 @@ class SportsRepository(
     fun getTeamByIdFlow(id: String): Flow<TeamEntity?> = dao.getTeamByIdFlow(id)
     fun getLeagueByIdFlow(id: String): Flow<LeagueEntity?> = dao.getLeagueByIdFlow(id)
     fun getPlayerByIdFlow(id: String): Flow<PlayerEntity?> = dao.getPlayerByIdFlow(id)
+    fun getProfileKnowledgeFlow(type: String, id: String): Flow<ProfileKnowledgeEntity?> = dao.getProfileKnowledge("$type:$id")
+
+    suspend fun loadProfileKnowledge(type: String, id: String, displayName: String) = withContext(Dispatchers.IO) {
+        if (displayName.isBlank()) return@withContext
+        val key = "$type:$id"
+        val cached = dao.getProfileKnowledgeOnce(key)
+        if (cached != null && System.currentTimeMillis() - cached.updatedAt < 7 * 24 * 60 * 60 * 1000L) return@withContext
+        val suffix = when (type) { "player" -> "فوتبالیست"; "team" -> "باشگاه فوتبال"; else -> "لیگ فوتبال" }
+        fetchWikipedia(displayName, suffix)?.let { info ->
+            dao.insertProfileKnowledge(info.copy(key = key, entityType = type, entityId = id))
+        }
+    }
+
+    private fun fetchWikipedia(displayName: String, suffix: String): ProfileKnowledgeEntity? {
+        val url = "https://fa.wikipedia.org/w/api.php".toHttpUrl().newBuilder()
+            .addQueryParameter("action", "query")
+            .addQueryParameter("format", "json")
+            .addQueryParameter("formatversion", "2")
+            .addQueryParameter("generator", "search")
+            .addQueryParameter("gsrsearch", "$displayName $suffix")
+            .addQueryParameter("gsrlimit", "1")
+            .addQueryParameter("prop", "extracts|pageimages|info")
+            .addQueryParameter("explaintext", "1")
+            .addQueryParameter("exsectionformat", "plain")
+            .addQueryParameter("piprop", "thumbnail")
+            .addQueryParameter("pithumbsize", "800")
+            .addQueryParameter("inprop", "url")
+            .addQueryParameter("origin", "*")
+            .build()
+        val request = Request.Builder().url(url).header("User-Agent", "Natijeh/1.12 (https://github.com/sahandse/natijeh-app)").build()
+        return runCatching {
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val page = JSONObject(response.body?.string().orEmpty()).optJSONObject("query")
+                    ?.optJSONArray("pages")?.optJSONObject(0) ?: return@use null
+                val extract = page.optString("extract").trim()
+                if (extract.isBlank()) return@use null
+                ProfileKnowledgeEntity(
+                    key = "",
+                    entityType = "",
+                    entityId = "",
+                    title = page.optString("title", displayName),
+                    description = extract.take(12_000),
+                    imageUrl = page.optJSONObject("thumbnail")?.optString("source").orEmpty(),
+                    articleUrl = page.optString("fullurl"),
+                    updatedAt = System.currentTimeMillis()
+                )
+            }
+        }.getOrNull()
+    }
 
     suspend fun setMatchFavorite(id: String, isFav: Boolean) = dao.setMatchFavorite(id, isFav)
     suspend fun setTeamFavorite(id: String, isFav: Boolean) = dao.setTeamFavorite(id, isFav)
