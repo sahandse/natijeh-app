@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">نتیجه</string>
-    <string name="widget_description">امتیاز زنده تیم محبوب</string>
-    <string name="widget_empty">یک تیم را به علاقه‌مندی اضافه کنید</string>
+    <string name="widget_description">نتیجه زنده و بازی‌های بعدی تیم‌های محبوب</string>
+    <string name="widget_empty">تیم محبوب انتخاب کنید؛ سپس بروزرسانی را بزنید</string>
     <string name="live_channel_name">گل و کارت تیم‌های محبوب</string>
     <string name="live_channel_status">وضعیت بازی زنده</string>
     <string name="foreground_live">نتیجه در حال دنبال کردن بازی‌های زنده است</string>

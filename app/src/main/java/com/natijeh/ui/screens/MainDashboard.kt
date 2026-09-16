@@ -311,7 +311,7 @@ fun MainDashboard(
                 )
             }
 
-            if (showSearch && searchQuery.isNotBlank()) {
+            if (showSearch) {
                 SearchResultsContent(
                     query = searchQuery,
                     sportsViewModel = sportsViewModel,
@@ -1202,15 +1202,24 @@ private fun LeagueHubCard(league: LeagueEntity, liveCount: Int, onOpen: () -> Un
 @Composable
 fun NewsTabContent(viewModel: SportsViewModel) {
     val news by viewModel.newsFeed.collectAsStateWithLifecycle()
+    val favoriteTeams by viewModel.favoriteTeams.collectAsStateWithLifecycle()
+    val favoritePlayers by viewModel.favoritePlayers.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshingNews.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val newsPrefs = remember { context.getSharedPreferences("natijeh_news", 0) }
     var selectedCategory by remember { mutableStateOf("همه") }
     var selectedArticle by remember { mutableStateOf<NewsEntity?>(null) }
-    val filteredNews = remember(news, selectedCategory) {
+    var savedArticles by remember { mutableStateOf(newsPrefs.getStringSet("saved_ids", emptySet()).orEmpty().toSet()) }
+    var readerScale by remember { mutableStateOf(1f) }
+    val filteredNews = remember(news, selectedCategory, savedArticles, favoriteTeams, favoritePlayers) {
         val uniqueNews = news.distinctBy { it.title.trim().lowercase() }
+        val favoriteNames = (favoriteTeams.map { it.name } + favoritePlayers.map { it.name }).filter { it.length > 2 }
         when (selectedCategory) {
             "داخلی" -> uniqueNews.filter { it.source.contains("داخلی") }
             "خارجی" -> uniqueNews.filter { it.source.contains("خارجی") }
+            "نقل‌وانتقالات" -> uniqueNews.filter { it.title.contains("انتقال") || it.summary.contains("انتقال") }
+            "ذخیره‌شده" -> uniqueNews.filter { it.id in savedArticles }
+            "برای من" -> uniqueNews.filter { article -> favoriteNames.any { name -> article.title.contains(name, true) || article.summary.contains(name, true) } }
             else -> uniqueNews
         }
     }
@@ -1245,10 +1254,21 @@ fun NewsTabContent(viewModel: SportsViewModel) {
                         Text(article.date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     }
                     Text(article.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = article.id in savedArticles,
+                            onClick = {
+                                savedArticles = if (article.id in savedArticles) savedArticles - article.id else savedArticles + article.id
+                                newsPrefs.edit().putStringSet("saved_ids", savedArticles).apply()
+                            },
+                            label = { Text(if (article.id in savedArticles) "ذخیره شد" else "ذخیره خبر") }
+                        )
+                        FilterChip(selected = readerScale > 1f, onClick = { readerScale = if (readerScale >= 1.25f) 1f else readerScale + 0.125f }, label = { Text("اندازه متن A+") })
+                    }
                     Text(
                         article.content.ifBlank { article.summary },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = MaterialTheme.typography.bodyLarge.fontSize * readerScale)
                     )
                     if (article.articleUrl.isNotBlank()) {
                         Card(
@@ -1258,6 +1278,28 @@ fun NewsTabContent(viewModel: SportsViewModel) {
                             }
                         ) {
                             Text("مشاهده منبع اصلی", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            val share = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "${article.title}\n${article.articleUrl}")
+                            }
+                            context.startActivity(Intent.createChooser(share, "اشتراک‌گذاری خبر"))
+                        }
+                    ) { Text("اشتراک‌گذاری خبر", modifier = Modifier.padding(16.dp), fontWeight = FontWeight.Bold) }
+                    val related = news.filter { it.id != article.id }.take(3)
+                    if (related.isNotEmpty()) {
+                        Text("خبرهای مرتبط", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                        related.forEach { item ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                modifier = Modifier.fillMaxWidth().clickable { selectedArticle = item }
+                            ) {
+                                Text(item.title, modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }
@@ -1274,31 +1316,35 @@ fun NewsTabContent(viewModel: SportsViewModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            listOf("همه", "داخلی", "خارجی").forEach { category ->
-                val isSelected = selectedCategory == category
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { selectedCategory = category },
-                    label = {
-                        Text(
-                            text = when (category) {
-                                "داخلی" -> "فوتبال داخلی"
-                                "خارجی" -> "فوتبال خارجی"
-                                else -> "همه اخبار"
-                            },
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        labelColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
+            LazyRow(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("برای من", "همه", "داخلی", "خارجی", "نقل‌وانتقالات", "ذخیره‌شده")) { category ->
+                    val isSelected = selectedCategory == category
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedCategory = category },
+                        label = {
+                            Text(
+                                text = when (category) {
+                                    "داخلی" -> "فوتبال داخلی"
+                                    "خارجی" -> "فوتبال خارجی"
+                                    "نقل‌وانتقالات" -> "نقل‌وانتقالات"
+                                    "ذخیره‌شده" -> "ذخیره‌شده"
+                                    "برای من" -> "برای من"
+                                    else -> "همه اخبار"
+                                },
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = { viewModel.refreshNews() }, modifier = Modifier.size(36.dp)) {
                 if (isRefreshing) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -1316,7 +1362,31 @@ fun NewsTabContent(viewModel: SportsViewModel) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(filteredNews, key = { it.id }) { article ->
+                val featured = filteredNews.first()
+                item(key = "featured-${featured.id}") {
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth().clickable { selectedArticle = featured }
+                    ) {
+                        Box(modifier = Modifier.fillMaxWidth().height(250.dp)) {
+                            AsyncImage(featured.imageUrl, featured.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                            Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)))))
+                            Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                Surface(shape = CircleShape, color = LiveRed) { Text("خبر ویژه", color = Color.White, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black) }
+                                Text(featured.title, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                                Text("${featured.source} · ${featured.date}", color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(shape = CircleShape, color = LiveRed.copy(alpha = 0.14f)) { Text("فوری", color = LiveRed, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) }
+                        Text("تازه‌ترین خبرهای فوتبال", fontWeight = FontWeight.Black)
+                    }
+                }
+                items(filteredNews.drop(1), key = { it.id }) { article ->
                     Card(
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1324,19 +1394,16 @@ fun NewsTabContent(viewModel: SportsViewModel) {
                             .fillMaxWidth()
                             .clickable { selectedArticle = article }
                     ) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (article.imageUrl.isNotBlank()) {
                                 AsyncImage(
                                     model = article.imageUrl,
                                     contentDescription = article.title,
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(180.dp)
-                                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                                    modifier = Modifier.size(104.dp).clip(RoundedCornerShape(14.dp))
                                 )
                             }
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1347,19 +1414,7 @@ fun NewsTabContent(viewModel: SportsViewModel) {
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(text = article.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = article.summary,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "مطالعه خبر در برنامه",
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text(text = article.summary, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }
@@ -1554,8 +1609,66 @@ fun SearchResultsContent(
     val leagues by sportsViewModel.allLeagues.collectAsStateWithLifecycle()
     val teams by sportsViewModel.allTeams.collectAsStateWithLifecycle()
     val players by sportsViewModel.allPlayers.collectAsStateWithLifecycle()
+    val favoriteTeams by sportsViewModel.favoriteTeams.collectAsStateWithLifecycle()
+    val favoritePlayers by sportsViewModel.favoritePlayers.collectAsStateWithLifecycle()
     var category by remember(query) { mutableStateOf("all") }
     val needle = query.trim()
+
+    if (needle.isBlank()) {
+        val today = allMatches.filter { it.dayOffset == 0 }.sortedBy { it.time }.take(4)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("کشف فوتبال", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                        Text("نام فارسی یا انگلیسی تیم، بازیکن، لیگ و مسابقه را وارد کنید.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            if (favoriteTeams.isNotEmpty()) {
+                item { HomeSectionTitle("تیم‌های شما", "دسترسی سریع") }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(favoriteTeams, key = { "discover-${it.id}" }) { team ->
+                            Card(modifier = Modifier.width(132.dp).clickable { onNavigateToTeam(team.id) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
+                                Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    AsyncImage(team.logo, team.name, modifier = Modifier.size(48.dp))
+                                    Text(team.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (favoritePlayers.isNotEmpty()) {
+                item { HomeSectionTitle("بازیکنان محبوب", "پروفایل و آمار") }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(favoritePlayers, key = { "discover-player-${it.id}" }) { player ->
+                            Card(modifier = Modifier.width(150.dp).clickable { onNavigateToPlayer(player.id) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
+                                Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    AsyncImage(player.portrait, player.name, contentScale = ContentScale.Crop, modifier = Modifier.size(54.dp).clip(CircleShape))
+                                    Text(player.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
+                                    Text(player.teamName, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (today.isNotEmpty()) {
+                item { HomeSectionTitle("مسابقات مهم امروز", "برنامه امروز") }
+                items(today, key = { "discover-match-${it.id}" }) { match ->
+                    MatchCard(match, { onNavigateToMatch(match.id) }, { sportsViewModel.toggleMatchFavorite(match.id, match.isFavorite) }, { onNavigateToTeam(match.homeTeamId) }, { onNavigateToTeam(match.awayTeamId) }, { onNavigateToLeague(match.leagueId) })
+                }
+            }
+        }
+        return
+    }
 
     val filteredMatches = allMatches.filter {
         it.homeTeamName.contains(needle, ignoreCase = true) ||
@@ -1701,17 +1814,53 @@ private fun MoreTabContent(
             NotificationCenterContent(sportsViewModel, onNavigateToMatch)
         }
         "calendar" -> MoreSectionScaffold("تقویم مسابقات", onBack = { onSelectSection(null) }) {
-            TodayTabContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague, onNavigateToPlayer, false, true)
+            MatchCalendarContent(sportsViewModel, onNavigateToMatch, onNavigateToTeam, onNavigateToLeague)
         }
         "rankings" -> MoreSectionScaffold("جدول‌ها و رتبه‌بندی", onBack = { onSelectSection(null) }) {
-            LeaguesTabContent(sportsViewModel, onNavigateToLeague)
+            RankingsContent(sportsViewModel, onNavigateToTeam, onNavigateToPlayer, onNavigateToLeague)
         }
-        "about" -> MoreSectionScaffold("درباره نتیجه", onBack = { onSelectSection(null) }) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("نتیجه", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                Text("نتایج زنده فوتبال فارسی با تمرکز بر سرعت، سادگی و اطلاعات عمومی معتبر.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("منابع داده: API عمومی ورزش ۳، RSS و ویکی‌پدیای فارسی", style = MaterialTheme.typography.bodyMedium)
+        "comparison" -> MoreSectionScaffold("مرکز مقایسه", onBack = { onSelectSection(null) }) {
+            ComparisonCenterContent(sportsViewModel, onNavigateToTeam, onNavigateToPlayer)
+        }
+        "form" -> MoreSectionScaffold("فرم و آمار فصل", onBack = { onSelectSection(null) }) {
+            FormAndSeasonContent(sportsViewModel, onNavigateToTeam)
+        }
+        "reminders" -> MoreSectionScaffold("مدیریت یادآورها", onBack = { onSelectSection(null) }) {
+            ReminderManagerContent(sportsViewModel, onNavigateToSettings, onNavigateToMatch)
+        }
+        "offline" -> MoreSectionScaffold("مرکز آفلاین", onBack = { onSelectSection(null) }) {
+            OfflineCenterContent(sportsViewModel)
+        }
+        "recent" -> MoreSectionScaffold("اخیراً دیده‌شده", onBack = { onSelectSection(null) }) {
+            RecentlyViewedContent { entry ->
+                when (entry.type) {
+                    "team" -> onNavigateToTeam(entry.id)
+                    "player" -> onNavigateToPlayer(entry.id)
+                    "league" -> onNavigateToLeague(entry.id)
+                    else -> onNavigateToMatch(entry.id)
+                }
             }
+        }
+        "venues" -> MoreSectionScaffold("ورزشگاه و مربی", onBack = { onSelectSection(null) }) {
+            StadiumCoachContent(sportsViewModel, onNavigateToTeam)
+        }
+        "share" -> MoreSectionScaffold("کارت اشتراک", onBack = { onSelectSection(null) }) {
+            ShareMatchCardContent(sportsViewModel, onNavigateToMatch)
+        }
+        "health" -> MoreSectionScaffold("وضعیت داده‌ها", onBack = { onSelectSection(null) }) {
+            DataHealthContent(sportsViewModel)
+        }
+        "collections" -> MoreSectionScaffold("مجموعه‌های من", onBack = { onSelectSection(null) }) {
+            CollectionsContent(sportsViewModel, onNavigateToTeam, onNavigateToPlayer)
+        }
+        "changes" -> MoreSectionScaffold("تغییرات نسخه", onBack = { onSelectSection(null) }) {
+            ReleaseChangesContent(sportsViewModel)
+        }
+        "multi_match" -> MoreSectionScaffold("چندمسابقه‌ای", onBack = { onSelectSection(null) }) {
+            MultiMatchCenterContent(sportsViewModel, onNavigateToMatch)
+        }
+        "live_table" -> MoreSectionScaffold("جدول زنده", onBack = { onSelectSection(null) }) {
+            LiveStandingsContent(sportsViewModel, onNavigateToTeam)
         }
         else -> MoreHub(onSelectSection, onNavigateToSettings, sportsViewModel)
     }
@@ -1736,6 +1885,154 @@ private fun MoreSectionScaffold(title: String, onBack: () -> Unit, content: @Com
 }
 
 @Composable
+private fun MatchCalendarContent(
+    viewModel: SportsViewModel,
+    onNavigateToMatch: (String) -> Unit,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit
+) {
+    val matches by viewModel.allMatches.collectAsStateWithLifecycle()
+    val leagues by viewModel.allLeagues.collectAsStateWithLifecycle()
+    var day by rememberSaveable { mutableStateOf(0) }
+    var leagueId by rememberSaveable { mutableStateOf("all") }
+    val days = listOf(-2 to "۲ روز قبل", -1 to "دیروز", 0 to "امروز", 1 to "فردا", 2 to "۲ روز بعد")
+    val shown = matches.filter { it.dayOffset == day && (leagueId == "all" || it.leagueId == leagueId) }
+
+    Column(Modifier.fillMaxSize()) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(days) { (offset, title) ->
+                FilterChip(
+                    selected = day == offset,
+                    onClick = { day = offset; viewModel.selectDate(offset) },
+                    label = { Text(title) },
+                    shape = CircleShape
+                )
+            }
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item { FilterChip(selected = leagueId == "all", onClick = { leagueId = "all" }, label = { Text("همه لیگ‌ها") }) }
+            items(leagues, key = { it.id }) { league ->
+                FilterChip(selected = leagueId == league.id, onClick = { leagueId = league.id }, label = { Text(league.name) })
+            }
+        }
+        if (shown.isEmpty()) {
+            EmptyState("برای این تاریخ مسابقه‌ای پیدا نشد.")
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(days.first { it.first == day }.second, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+                        Text("${shown.size} مسابقه", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                items(shown, key = { "calendar-${it.id}" }) { match ->
+                    MatchCard(
+                        match,
+                        { onNavigateToMatch(match.id) },
+                        { viewModel.toggleMatchFavorite(match.id, match.isFavorite) },
+                        { onNavigateToTeam(match.homeTeamId) },
+                        { onNavigateToTeam(match.awayTeamId) },
+                        { onNavigateToLeague(match.leagueId) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RankingsContent(
+    viewModel: SportsViewModel,
+    onNavigateToTeam: (String) -> Unit,
+    onNavigateToPlayer: (String) -> Unit,
+    onNavigateToLeague: (String) -> Unit
+) {
+    val leagues by viewModel.allLeagues.collectAsStateWithLifecycle()
+    var mode by rememberSaveable { mutableStateOf("teams") }
+    val standings = remember(leagues) {
+        leagues.flatMap { league ->
+            runCatching { dashboardStandingsAdapter.fromJson(league.standingsJson).orEmpty() }.getOrDefault(emptyList())
+                .map { league to it }
+        }.sortedByDescending { it.second.points }
+    }
+    val scorers = remember(leagues) {
+        leagues.flatMap { league ->
+            runCatching { dashboardScorersAdapter.fromJson(league.scorersJson).orEmpty() }.getOrDefault(emptyList())
+                .map { league to it }
+        }.sortedByDescending { it.second.goals }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("بهترین‌های فوتبال", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    Text("مقایسه تیم‌ها و گلزنان تمام لیگ‌های دریافت‌شده", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = mode == "teams", onClick = { mode = "teams" }, label = { Text("تیم‌ها") })
+                        FilterChip(selected = mode == "players", onClick = { mode = "players" }, label = { Text("گلزنان") })
+                    }
+                }
+            }
+        }
+        if (mode == "teams") {
+            if (standings.isEmpty()) item { EmptyState("جدول رتبه‌بندی هنوز دریافت نشده است.") }
+            items(standings.take(30), key = { "rank-team-${it.first.id}-${it.second.teamId}" }) { (league, row) ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToTeam(row.teamId) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(row.rank.toString(), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                        AsyncImage(row.teamLogo, row.teamName, modifier = Modifier.size(36.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(row.teamName, fontWeight = FontWeight.Bold)
+                            Text(league.name, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, modifier = Modifier.clickable { onNavigateToLeague(league.id) })
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(row.points.toString(), fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                            Text("امتیاز", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        } else {
+            if (scorers.isEmpty()) item { EmptyState("آمار گلزنان هنوز دریافت نشده است.") }
+            items(scorers.take(30), key = { "rank-player-${it.first.id}-${it.second.playerId}" }) { (league, scorer) ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToPlayer(scorer.playerId) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AsyncImage(scorer.portrait, scorer.name, contentScale = ContentScale.Crop, modifier = Modifier.size(46.dp).clip(CircleShape))
+                        Column(Modifier.weight(1f)) {
+                            Text(scorer.name, fontWeight = FontWeight.Bold)
+                            Text("${scorer.teamName} · ${league.name}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Text("${scorer.goals} گل", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun MoreHub(onSelect: (String) -> Unit, onSettings: () -> Unit, viewModel: SportsViewModel) {
     val history by viewModel.notificationHistory.collectAsStateWithLifecycle()
     val allMatches by viewModel.allMatches.collectAsStateWithLifecycle()
@@ -1747,8 +2044,19 @@ private fun MoreHub(onSelect: (String) -> Unit, onSettings: () -> Unit, viewMode
         Triple("rankings", "رتبه‌بندی", "جدول تیم‌ها و گلزنان"),
         Triple("favorites", "مدیریت محبوب‌ها", "تیم‌ها، لیگ‌ها و بازیکنان"),
         Triple("notifications", "مرکز اعلان", "گل‌ها و اتفاقات مهم قبلی"),
+        Triple("multi_match", "مرکز چندمسابقه‌ای", "دنبال‌کردن هم‌زمان چهار بازی"),
+        Triple("live_table", "جدول زنده لیگ", "رتبه لحظه‌ای با نتایج در جریان"),
+        Triple("comparison", "مرکز مقایسه", "مقایسه تیم‌ها و بازیکنان"),
+        Triple("form", "فرم و آمار فصل", "عملکرد و قدرت تیم‌ها"),
+        Triple("reminders", "مدیریت یادآورها", "بازی‌ها و نوع اعلان"),
+        Triple("offline", "مرکز آفلاین", "دانلود، پیشرفت و فضای مصرفی"),
+        Triple("recent", "اخیراً دیده‌شده", "تاریخچه صفحات بازشده"),
+        Triple("venues", "ورزشگاه و مربی", "اطلاعات تکمیلی باشگاه‌ها"),
+        Triple("share", "کارت اشتراک مسابقه", "نتیجه مینیمال برای اشتراک"),
+        Triple("health", "وضعیت داده‌ها", "اتصال، کش و آخرین دریافت"),
+        Triple("collections", "مجموعه‌های من", "پوشه‌های شخصی فوتبال"),
+        Triple("changes", "تغییرات نسخه", "امکانات نسخه نصب‌شده"),
         Triple("settings", "تنظیمات", "ظاهر، اعلان و دانلود آفلاین"),
-        Triple("about", "درباره برنامه", "منابع داده و اطلاعات نسخه")
     ).filter { query.isBlank() || it.second.contains(query, true) || it.third.contains(query, true) }
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -1776,9 +2084,19 @@ private fun MoreHub(onSelect: (String) -> Unit, onSettings: () -> Unit, viewMode
 @Composable
 private fun NotificationCenterContent(viewModel: SportsViewModel, onNavigateToMatch: (String) -> Unit) {
     val history by viewModel.notificationHistory.collectAsStateWithLifecycle()
+    var filter by rememberSaveable { mutableStateOf("all") }
     if (history.isEmpty()) {
         EmptyState("هنوز اعلانی ثبت نشده است.")
         return
+    }
+    val filtered = history.filter {
+        filter == "all" || when (filter) {
+            "goal" -> it.kind.contains("GOAL", true)
+            "card" -> it.kind.contains("CARD", true)
+            "match" -> it.kind.contains("KICKOFF", true) || it.kind.contains("FULL", true)
+            "unread" -> !it.isRead
+            else -> true
+        }
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1810,7 +2128,15 @@ private fun NotificationCenterContent(viewModel: SportsViewModel, onNavigateToMa
                 }
             }
         }
-        items(history, key = { it.id }) { alert ->
+        item {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("all" to "همه", "unread" to "خوانده‌نشده", "goal" to "گل‌ها", "card" to "کارت‌ها", "match" to "شروع و پایان")) { (key, label) ->
+                    FilterChip(selected = filter == key, onClick = { filter = key }, label = { Text(label) }, shape = CircleShape)
+                }
+            }
+        }
+        if (filtered.isEmpty()) item { EmptyState("اعلانی در این دسته وجود ندارد.") }
+        items(filtered, key = { it.id }) { alert ->
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
@@ -1825,7 +2151,18 @@ private fun NotificationCenterContent(viewModel: SportsViewModel, onNavigateToMa
                     Box(
                         modifier = Modifier.size(42.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
-                    ) { Icon(Icons.Outlined.Notifications, contentDescription = null) }
+                    ) {
+                        Text(
+                            when {
+                                alert.kind.contains("GOAL", true) -> "⚽"
+                                alert.kind.contains("RED", true) -> "▰"
+                                alert.kind.contains("KICKOFF", true) -> "▶"
+                                else -> "✓"
+                            },
+                            color = if (alert.kind.contains("RED", true)) LiveRed else MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (!alert.isRead) {
@@ -1834,6 +2171,11 @@ private fun NotificationCenterContent(viewModel: SportsViewModel, onNavigateToMa
                             Text(alert.title, fontWeight = FontWeight.Bold)
                         }
                         Text(alert.body, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            SimpleDateFormat("HH:mm · yyyy/MM/dd", Locale("fa")).format(Date(alert.createdAt)),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
                     }
                 }
             }

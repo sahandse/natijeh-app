@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
@@ -88,6 +89,7 @@ fun LeagueDetailScreen(
     onNavigateToPlayer: (String) -> Unit = {}
 ) {
     val league by viewModel.getLeagueFlow(leagueId).collectAsStateWithLifecycle(initialValue = null)
+    val context = LocalContext.current
     val knowledge by viewModel.getProfileKnowledgeFlow("league", leagueId).collectAsStateWithLifecycle(initialValue = null)
     var selectedTab by remember(leagueId, initialTab) { mutableStateOf(initialTab.takeIf { it in setOf("table", "scorers", "week", "info") } ?: "table") }
 
@@ -95,7 +97,10 @@ fun LeagueDetailScreen(
         viewModel.loadLeagueDetails(leagueId)
     }
     LaunchedEffect(leagueId, league?.name) {
-        league?.name?.let { viewModel.loadProfileKnowledge("league", leagueId, it) }
+        league?.name?.let {
+            viewModel.loadProfileKnowledge("league", leagueId, it)
+            recordRecentEntry(context, "league", leagueId, it)
+        }
     }
 
     Scaffold(

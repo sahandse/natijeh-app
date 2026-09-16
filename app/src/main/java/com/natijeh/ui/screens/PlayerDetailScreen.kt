@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
@@ -60,13 +61,17 @@ fun PlayerDetailScreen(
     onNavigateToTeam: (String) -> Unit
 ) {
     val player by viewModel.getPlayerFlow(playerId).collectAsStateWithLifecycle(initialValue = null)
+    val context = LocalContext.current
     val knowledge by viewModel.getProfileKnowledgeFlow("player", playerId).collectAsStateWithLifecycle(initialValue = null)
 
     LaunchedEffect(playerId) {
         viewModel.loadPlayer(playerId)
     }
     LaunchedEffect(playerId, player?.name) {
-        player?.name?.let { viewModel.loadProfileKnowledge("player", playerId, it) }
+        player?.name?.let {
+            viewModel.loadProfileKnowledge("player", playerId, it)
+            recordRecentEntry(context, "player", playerId, it)
+        }
     }
 
     Scaffold(

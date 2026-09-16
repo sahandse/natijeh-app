@@ -42,7 +42,10 @@ data class AppSettings(
     val playerNotifications: Boolean = true,
     val onboardingCompleted: Boolean = false,
     val cardDensity: CardDensity = CardDensity.COMPACT,
-    val notificationPreset: NotificationPreset = NotificationPreset.IMPORTANT
+    val notificationPreset: NotificationPreset = NotificationPreset.IMPORTANT,
+    val dataSaver: Boolean = false,
+    val lineupNotifications: Boolean = true,
+    val secondHalfNotifications: Boolean = false
 )
 
 class SettingsStore(private val context: Context) {
@@ -59,7 +62,10 @@ class SettingsStore(private val context: Context) {
             playerNotifications = prefs[PLAYER_NOTIFICATIONS] ?: true,
             onboardingCompleted = prefs[ONBOARDING_COMPLETED] ?: false,
             cardDensity = runCatching { CardDensity.valueOf(prefs[CARD_DENSITY] ?: "COMPACT") }.getOrDefault(CardDensity.COMPACT),
-            notificationPreset = runCatching { NotificationPreset.valueOf(prefs[NOTIFICATION_PRESET] ?: "IMPORTANT") }.getOrDefault(NotificationPreset.IMPORTANT)
+            notificationPreset = runCatching { NotificationPreset.valueOf(prefs[NOTIFICATION_PRESET] ?: "IMPORTANT") }.getOrDefault(NotificationPreset.IMPORTANT),
+            dataSaver = prefs[DATA_SAVER] ?: false,
+            lineupNotifications = prefs[LINEUP_NOTIFICATIONS] ?: true,
+            secondHalfNotifications = prefs[SECOND_HALF_NOTIFICATIONS] ?: false
         )
     }
 
@@ -98,6 +104,9 @@ class SettingsStore(private val context: Context) {
             it[PLAYER_NOTIFICATIONS] = preset == NotificationPreset.ALL
         }
     }
+    suspend fun setDataSaver(enabled: Boolean) = context.dataStore.edit { it[DATA_SAVER] = enabled }
+    suspend fun setLineupNotifications(enabled: Boolean) = context.dataStore.edit { it[LINEUP_NOTIFICATIONS] = enabled }
+    suspend fun setSecondHalfNotifications(enabled: Boolean) = context.dataStore.edit { it[SECOND_HALF_NOTIFICATIONS] = enabled }
 
     companion object {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -112,5 +121,8 @@ class SettingsStore(private val context: Context) {
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val CARD_DENSITY = stringPreferencesKey("card_density")
         private val NOTIFICATION_PRESET = stringPreferencesKey("notification_preset")
+        private val DATA_SAVER = booleanPreferencesKey("data_saver")
+        private val LINEUP_NOTIFICATIONS = booleanPreferencesKey("lineup_notifications")
+        private val SECOND_HALF_NOTIFICATIONS = booleanPreferencesKey("second_half_notifications")
     }
 }

@@ -43,6 +43,14 @@ object MatchAlertFormatter {
         if (previous.status == "LIVE" && current.status == "FINISHED") {
             out += MatchAlert(current.id, "پایان بازی", scoreLine, MatchAlert.Kind.FULL_TIME)
         }
+        val previousHasLineup = previous.lineupsJson.contains("\"homeStarting\":[{") || previous.lineupsJson.contains("\"awayStarting\":[{")
+        val currentHasLineup = current.lineupsJson.contains("\"homeStarting\":[{") || current.lineupsJson.contains("\"awayStarting\":[{")
+        if (!previousHasLineup && currentHasLineup) {
+            out += MatchAlert(current.id, "ترکیب رسمی اعلام شد", "${current.homeTeamName} - ${current.awayTeamName}", MatchAlert.Kind.LINEUP)
+        }
+        if (previous.minute <= 45 && current.minute > 45 && current.status == "LIVE") {
+            out += MatchAlert(current.id, "شروع نیمه دوم", scoreLine, MatchAlert.Kind.SECOND_HALF)
+        }
         val homeDelta = current.homeScore - previous.homeScore
         val awayDelta = current.awayScore - previous.awayScore
         if (homeDelta > 0 || awayDelta > 0) {

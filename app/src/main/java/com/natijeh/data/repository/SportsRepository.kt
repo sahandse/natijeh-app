@@ -180,7 +180,8 @@ class SportsRepository(
                 } catch (_: Exception) {
                     false
                 }
-                delay(if (hasLive) 20_000 else 45_000)
+                val dataSaver = runCatching { settingsStore.settings.first().dataSaver }.getOrDefault(false)
+                delay(if (dataSaver) { if (hasLive) 60_000 else 120_000 } else { if (hasLive) 20_000 else 45_000 })
                 try {
                     refreshLiveScore(0)
                 } catch (e: Exception) {
@@ -197,7 +198,8 @@ class SportsRepository(
 
     suspend fun refreshAll(includeNews: Boolean = false) {
         val errors = mutableListOf<String>()
-        listOf(-2, -1, 0, 1, 2).forEach { offset ->
+        val dataSaver = runCatching { settingsStore.settings.first().dataSaver }.getOrDefault(false)
+        (if (dataSaver) listOf(-1, 0, 1) else listOf(-2, -1, 0, 1, 2)).forEach { offset ->
             try {
                 refreshLiveScore(offset)
             } catch (e: Exception) {
@@ -215,7 +217,7 @@ class SportsRepository(
         } catch (e: Exception) {
             Log.e(tag, "Failed premier league index", e)
         }
-        if (includeNews) {
+        if (includeNews && !dataSaver) {
             try {
                 fetchRssNews()
             } catch (e: Exception) {
@@ -658,7 +660,8 @@ class SportsRepository(
         val favoriteIds = favoriteTeams.map { it.id }.toSet()
         val liveFav = live.firstOrNull { it.homeTeamId in favoriteIds || it.awayTeamId in favoriteIds }
         if (liveFav != null) {
-            return WidgetSnapshot(liveFav, true)
+            val extra = (live.filter { it.id != liveFav.id } + all.filter { it.status == "SCHEDULED" }).distinctBy { it.id }.take(2)
+            return WidgetSnapshot(liveFav, true, listOf(liveFav) + extra)
         }
         val upcoming = all
             .filter { it.status == "SCHEDULED" && (it.homeTeamId in favoriteIds || it.awayTeamId in favoriteIds) }
@@ -666,7 +669,11 @@ class SportsRepository(
         val fallback = live.firstOrNull() ?: all
             .filter { it.status == "SCHEDULED" }
             .minByOrNull { it.utcStart.ifBlank { it.time } }
-        return WidgetSnapshot(upcoming ?: fallback, live = upcoming == null && fallback?.status == "LIVE")
+        val primary = upcoming ?: fallback
+        val widgetMatches = listOfNotNull(primary) + all.filter {
+            it.id != primary?.id && it.status == "SCHEDULED" && (favoriteIds.isEmpty() || it.homeTeamId in favoriteIds || it.awayTeamId in favoriteIds)
+        }.sortedBy { it.utcStart.ifBlank { it.time } }.take(2)
+        return WidgetSnapshot(primary, live = upcoming == null && fallback?.status == "LIVE", matches = widgetMatches)
     }
 
     suspend fun hasWatchedLiveMatches(): Boolean {
@@ -944,5 +951,5 @@ class SportsRepository(
         return items
     }
 
-    data class WidgetSnapshot(val match: MatchEntity?, val live: Boolean)
+    data class WidgetSnapshot(val match: MatchEntity?, val live: Boolean, val matches: List<MatchEntity> = listOfNotNull(match))
 }

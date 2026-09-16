@@ -41,6 +41,8 @@ class GoalNotifier(
                 MatchAlert.Kind.RED_CARD -> settings.redCardNotifications
                 MatchAlert.Kind.KICKOFF -> settings.kickoffNotifications
                 MatchAlert.Kind.FULL_TIME -> settings.fullTimeNotifications
+                MatchAlert.Kind.LINEUP -> settings.lineupNotifications
+                MatchAlert.Kind.SECOND_HALF -> settings.secondHalfNotifications
             }
         }.forEach { alert ->
             val intent = Intent(context, MainActivity::class.java).apply {

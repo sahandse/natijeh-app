@@ -248,7 +248,7 @@ data class MatchAlert(
     val body: String,
     val kind: Kind
 ) {
-    enum class Kind { GOAL, RED_CARD, KICKOFF, FULL_TIME }
+    enum class Kind { GOAL, RED_CARD, KICKOFF, FULL_TIME, LINEUP, SECOND_HALF }
 }
 
 @Entity(tableName = "notification_history")

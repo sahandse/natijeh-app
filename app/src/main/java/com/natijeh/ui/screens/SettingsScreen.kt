@@ -197,6 +197,22 @@ fun SettingsScreen(
                         checked = settings.playerNotifications,
                         onCheckedChange = viewModel::setPlayerNotifications
                     )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.NotificationsActive,
+                        title = "ترکیب رسمی",
+                        subtitle = "پس از اعلام ترکیب تأییدشده",
+                        checked = settings.lineupNotifications,
+                        onCheckedChange = viewModel::setLineupNotifications
+                    )
+                    Hairline()
+                    SettingToggle(
+                        icon = Icons.Outlined.Timer,
+                        title = "شروع نیمه دوم",
+                        subtitle = "بازگشت دو تیم به مسابقه",
+                        checked = settings.secondHalfNotifications,
+                        onCheckedChange = viewModel::setSecondHalfNotifications
+                    )
                 }
                 Hairline()
                 SettingToggle(
@@ -218,6 +234,14 @@ fun SettingsScreen(
 
             SectionLabel("داده و فضای آفلاین")
             SettingsCard {
+                SettingToggle(
+                    icon = Icons.Outlined.CloudDownload,
+                    title = "کاهش مصرف اینترنت",
+                    subtitle = "بروزرسانی کمتر، سه روز مسابقه و توقف دریافت خودکار اخبار",
+                    checked = settings.dataSaver,
+                    onCheckedChange = viewModel::setDataSaver
+                )
+                Hairline()
                 SettingAction(
                     icon = Icons.Outlined.CloudDownload,
                     title = if (maintenance.downloading) "توقف دانلود محتوا" else "دانلود داده برای آفلاین",
@@ -238,14 +262,14 @@ fun SettingsScreen(
                 )
             }
 
-            SectionLabel("درباره و بروزرسانی")
+            SectionLabel("بروزرسانی و پشتیبانی")
             SettingsCard {
                 AboutRow("نسخه نصب‌شده", BuildConfig.VERSION_NAME)
                 Hairline()
                 SettingAction(
                     icon = Icons.Outlined.SystemUpdate,
                     title = "بررسی بروزرسانی",
-                    subtitle = maintenance.updateMessage ?: "مرجع رسمی GitHub Releases",
+                    subtitle = maintenance.updateMessage ?: "برای دریافت نسخه جدید بررسی کنید",
                     enabled = !maintenance.checkingUpdate && !maintenance.updateDownloading,
                     progress = maintenance.updateProgress,
                     onClick = {
@@ -272,21 +296,15 @@ fun SettingsScreen(
                 }
                 Hairline()
                 SettingAction(
-                    icon = Icons.Outlined.PhoneAndroid,
-                    title = "صفحه رسمی پروژه",
-                    subtitle = "GitHub · sahandse/natijeh-app",
-                    enabled = true,
-                    onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/sahandse/natijeh-app"))) } }
-                )
-                Hairline()
-                SettingAction(
                     icon = Icons.Outlined.Notifications,
                     title = "گزارش خطا و بازخورد",
-                    subtitle = "ارسال گزارش همراه نسخه و مدل دستگاه",
+                    subtitle = "ارسال در تلگرام به @iappSupport",
                     enabled = true,
                     onClick = {
-                        val body = "نسخه: ${BuildConfig.VERSION_NAME}\nدستگاه: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nاندروید: ${android.os.Build.VERSION.RELEASE}\n\nشرح مشکل:\n"
-                        runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:?subject=Natijeh feedback&body=${Uri.encode(body)}")), "ارسال بازخورد")) }
+                        val body = "گزارش برنامه نتیجه\nنسخه: ${BuildConfig.VERSION_NAME}\nدستگاه: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nاندروید: ${android.os.Build.VERSION.RELEASE}\n\nشرح مشکل:\n"
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/iappSupport?text=${Uri.encode(body)}")))
+                        }
                     }
                 )
             }

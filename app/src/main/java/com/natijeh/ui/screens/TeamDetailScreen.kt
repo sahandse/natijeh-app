@@ -54,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ fun TeamDetailScreen(
     onNavigateToPlayer: (String) -> Unit = {}
 ) {
     val team by viewModel.getTeamFlow(teamId).collectAsStateWithLifecycle(initialValue = null)
+    val context = LocalContext.current
     val knowledge by viewModel.getProfileKnowledgeFlow("team", teamId).collectAsStateWithLifecycle(initialValue = null)
     val favoritePlayers by viewModel.favoritePlayers.collectAsStateWithLifecycle()
     val favoriteIds = remember(favoritePlayers) { favoritePlayers.map { it.id }.toSet() }
@@ -117,7 +119,10 @@ fun TeamDetailScreen(
         viewModel.loadTeamDetails(teamId)
     }
     LaunchedEffect(teamId, team?.name) {
-        team?.name?.let { viewModel.loadProfileKnowledge("team", teamId, it) }
+        team?.name?.let {
+            viewModel.loadProfileKnowledge("team", teamId, it)
+            recordRecentEntry(context, "team", teamId, it)
+        }
     }
 
     Scaffold(

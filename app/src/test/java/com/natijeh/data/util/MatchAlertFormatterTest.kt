@@ -13,7 +13,9 @@ class MatchAlertFormatterTest {
         eventsJson: String = "[]",
         isFavorite: Boolean = false,
         homeTeamId: String = "4",
-        leagueId: String = "6"
+        leagueId: String = "6",
+        minute: Int = 20,
+        lineupsJson: String = "{}"
     ) = MatchEntity(
         id = "1",
         homeTeamId = homeTeamId,
@@ -23,7 +25,7 @@ class MatchAlertFormatterTest {
         homeScore = homeScore,
         awayScore = awayScore,
         status = status,
-        minute = 20,
+        minute = minute,
         date = "",
         time = "19:00",
         leagueId = leagueId,
@@ -32,7 +34,7 @@ class MatchAlertFormatterTest {
         referee = "",
         eventsJson = eventsJson,
         statsJson = "[]",
-        lineupsJson = "{}",
+        lineupsJson = lineupsJson,
         h2hJson = "{}",
         isFavorite = isFavorite
     )
@@ -53,5 +55,17 @@ class MatchAlertFormatterTest {
     fun `kickoff alert when match goes live`() {
         val alerts = MatchAlertFormatter.alerts(match(status = "SCHEDULED"), match(status = "LIVE"))
         assertTrue(alerts.any { it.kind == com.natijeh.data.model.MatchAlert.Kind.KICKOFF })
+    }
+
+    @Test
+    fun `confirmed lineup creates lineup alert`() {
+        val alerts = MatchAlertFormatter.alerts(match(lineupsJson = "{}"), match(lineupsJson = "{\"homeStarting\":[{\"name\":\"A\"}]}"))
+        assertTrue(alerts.any { it.kind == com.natijeh.data.model.MatchAlert.Kind.LINEUP })
+    }
+
+    @Test
+    fun `minute crossing halftime creates second half alert`() {
+        val alerts = MatchAlertFormatter.alerts(match(minute = 45), match(minute = 46))
+        assertTrue(alerts.any { it.kind == com.natijeh.data.model.MatchAlert.Kind.SECOND_HALF })
     }
 }

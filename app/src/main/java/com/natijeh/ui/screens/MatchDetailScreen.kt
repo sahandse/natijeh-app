@@ -1,6 +1,7 @@
 package com.natijeh.ui.screens
 
 import android.content.Intent
+import android.provider.CalendarContract
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +31,8 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -115,6 +118,9 @@ fun MatchDetailScreen(
 
     LaunchedEffect(matchId) {
         sportsViewModel.loadMatchDetails(matchId)
+    }
+    LaunchedEffect(matchId, match?.homeTeamName, match?.awayTeamName) {
+        match?.let { recordRecentEntry(context, "match", matchId, "${it.homeTeamName} - ${it.awayTeamName}") }
     }
     LaunchedEffect(match?.status) {
         while (match?.status == "SCHEDULED") {
@@ -202,6 +208,8 @@ fun MatchDetailScreen(
                         "stats" -> 2
                         "lineups" -> 3
                         "h2h" -> 4
+                        "pregame" -> 5
+                        "momentum" -> 6
                         else -> 0
                     },
                     containerColor = MaterialTheme.colorScheme.background,
@@ -222,6 +230,12 @@ fun MatchDetailScreen(
                     }
                     Tab(selected = selectedTab == "h2h", onClick = { selectedTab = "h2h" }) {
                         Text("رویارویی‌ها", modifier = Modifier.padding(16.dp), color = if (selectedTab == "h2h") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+                    }
+                    Tab(selected = selectedTab == "pregame", onClick = { selectedTab = "pregame" }) {
+                        Text("قبل بازی", modifier = Modifier.padding(16.dp), color = if (selectedTab == "pregame") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+                    }
+                    Tab(selected = selectedTab == "momentum", onClick = { selectedTab = "momentum" }) {
+                        Text("فشار بازی", modifier = Modifier.padding(16.dp), color = if (selectedTab == "momentum") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
                     }
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
@@ -250,6 +264,15 @@ fun MatchDetailScreen(
                                 EmptyState(message = "اطلاعات رویارویی‌های قبلی موجود نیست.")
                             }
                         }
+                        "pregame" -> PreMatchCenter(
+                            match = m,
+                            h2h = runCatching { h2hAdapter.fromJson(m.h2hJson) }.getOrNull(),
+                            lineups = runCatching { lineupsAdapter.fromJson(m.lineupsJson) }.getOrNull()
+                        )
+                        "momentum" -> MomentumCenter(
+                            match = m,
+                            events = runCatching { eventAdapter.fromJson(m.eventsJson).orEmpty() }.getOrDefault(emptyList())
+                        )
                     }
                 }
             }
@@ -258,6 +281,116 @@ fun MatchDetailScreen(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
+    }
+}
+
+@Composable
+private fun PreMatchCenter(match: MatchEntity, h2h: HeadToHeadData?, lineups: MatchLineups?) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("natijeh_predictions", 0) }
+    var prediction by remember(match.id) { mutableStateOf(prefs.getString("match_${match.id}", "").orEmpty()) }
+    val confirmed = lineups != null && (lineups.homeStarting.isNotEmpty() || lineups.awayStarting.isNotEmpty())
+    LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("مرکز پیش از مسابقه", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    SummaryInfoRow("زمان", "${match.date} · ${match.time}")
+                    SummaryInfoRow("ورزشگاه", match.venue.ifBlank { "اعلام نشده" })
+                    SummaryInfoRow("داور", match.referee.ifBlank { "اعلام نشده" })
+                    SummaryInfoRow("ترکیب", if (confirmed) "رسمی و تأییدشده" else "هنوز تأیید نشده")
+                }
+            }
+        }
+        h2h?.let { data ->
+            item {
+                Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("جمع‌بندی رودررو", fontWeight = FontWeight.Black)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            SummaryMetric(data.homeWins.toString(), "برد ${match.homeTeamName}", Modifier.weight(1f))
+                            SummaryMetric(data.draws.toString(), "مساوی", Modifier.weight(1f))
+                            SummaryMetric(data.awayWins.toString(), "برد ${match.awayTeamName}", Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("پیش‌بینی شخصی من", fontWeight = FontWeight.Black)
+                    Text("پیش‌بینی روی همین دستگاه ذخیره می‌شود و بعد از شروع مسابقه قابل تغییر نیست.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        listOf("home" to "برد میزبان", "draw" to "مساوی", "away" to "برد مهمان").forEach { (key, label) ->
+                            FilterChip(
+                                selected = prediction == key,
+                                enabled = match.status == "SCHEDULED",
+                                onClick = { prediction = key; prefs.edit().putString("match_${match.id}", key).apply() },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (match.status == "SCHEDULED") item {
+            Button(onClick = { addMatchToCalendar(context, match) }, modifier = Modifier.fillMaxWidth()) { Text("افزودن به تقویم گوشی") }
+        }
+    }
+}
+
+@Composable
+private fun MomentumCenter(match: MatchEntity, events: List<MatchEvent>) {
+    val dividerColor = MaterialTheme.colorScheme.outline.copy(alpha = .5f)
+    val buckets = remember(events, match.minute) {
+        val limit = maxOf(match.minute, events.maxOfOrNull { it.minute } ?: 0, 15)
+        (0..limit step 5).map { start ->
+            val section = events.filter { it.minute in start until start + 5 }
+            start to (section.count { it.isHome } - section.count { !it.isHome })
+        }
+    }
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("فشار و جریان مسابقه", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        Text("نمودار از رخدادهای ثبت‌شده هر بازه پنج‌دقیقه‌ای ساخته می‌شود.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+            Canvas(Modifier.fillMaxWidth().height(230.dp).padding(18.dp)) {
+                val middle = size.height / 2f
+                drawLine(dividerColor, Offset(0f, middle), Offset(size.width, middle), strokeWidth = 2f)
+                val width = size.width / maxOf(buckets.size, 1)
+                buckets.forEachIndexed { index, (_, pressure) ->
+                    val magnitude = (kotlin.math.abs(pressure).coerceAtLeast(1) * 16f).coerceAtMost(middle - 8f)
+                    val top = if (pressure >= 0) middle - magnitude else middle
+                    drawRoundRect(
+                        color = if (pressure >= 0) NatijehGreen else LiveRed,
+                        topLeft = Offset(index * width + 3f, top),
+                        size = Size(width - 6f, magnitude),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
+                    )
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(match.homeTeamName, color = NatijehGreen, fontWeight = FontWeight.Bold)
+            Text(match.awayTeamName, color = LiveRed, fontWeight = FontWeight.Bold)
+        }
+        if (events.isEmpty()) EmptyState("هنوز رخدادی برای ترسیم فشار مسابقه ثبت نشده است.")
+    }
+}
+
+private fun addMatchToCalendar(context: android.content.Context, match: MatchEntity) {
+    val start = listOf("yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "yyyy-MM-dd'T'HH:mm:ss'Z'")
+        .firstNotNullOfOrNull { pattern -> runCatching { SimpleDateFormat(pattern, Locale.US).parse(match.utcStart)?.time }.getOrNull() }
+        ?: System.currentTimeMillis() + 60 * 60 * 1000
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, start)
+            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, start + 2 * 60 * 60 * 1000)
+            putExtra(CalendarContract.Events.TITLE, "${match.homeTeamName} - ${match.awayTeamName}")
+            putExtra(CalendarContract.Events.DESCRIPTION, match.leagueName)
+            putExtra(CalendarContract.Events.EVENT_LOCATION, match.venue)
+        })
     }
 }
 
